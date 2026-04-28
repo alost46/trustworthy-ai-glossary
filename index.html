@@ -148,5 +148,46 @@ function mRenderTableCard(){const item=mState.tableCards[mState.tableIndex];cons
 function initMobileEvents(){document.querySelectorAll("[data-m-home]").forEach(btn=>btn.addEventListener("click",()=>mShowScreen("home")));$("mGoSearch").addEventListener("click",mOpenSearchScreen);$("mGoEnLetters").addEventListener("click",()=>mOpenLettersScreen("en"));$("mGoRuLetters").addEventListener("click",()=>mOpenLettersScreen("ru"));$("mGoEnList").addEventListener("click",()=>mOpenListScreen("en"));$("mGoRuList").addEventListener("click",()=>mOpenListScreen("ru"));$("mGoCardsTable").addEventListener("click",mOpenCardsTable);$("mClearSearch").addEventListener("click",()=>{mState.searchText="";mState.keyboardMode=null;mUpdateSearch()});$("mPrevCard").addEventListener("click",()=>{if(!mState.currentItems.length)return;mState.currentIndex=Math.max(0,mState.currentIndex-1);mRenderSingleCard()});$("mNextCard").addEventListener("click",()=>{if(!mState.currentItems.length)return;mState.currentIndex=Math.min(mState.currentItems.length-1,mState.currentIndex+1);mRenderSingleCard()});$("mPrevTableCard").addEventListener("click",()=>{if(!mState.tableCards.length)return;mState.tableIndex=Math.max(0,mState.tableIndex-1);mRenderTableCard()});$("mNextTableCard").addEventListener("click",()=>{if(!mState.tableCards.length)return;mState.tableIndex=Math.min(mState.tableCards.length-1,mState.tableIndex+1);mRenderTableCard()})}
 document.addEventListener("DOMContentLoaded",async()=>{initDesktopEvents();initMobileEvents();$("modeDesktop").addEventListener("click",()=>setMode("desktop"));$("modeMobile").addEventListener("click",()=>setMode("mobile"));chooseInitialMode();await loadData()});
 </script>
+
+<script>
+(function () {
+  function updateCardNavVisibility() {
+    try {
+      const prev = document.getElementById("mPrevCard");
+      const next = document.getElementById("mNextCard");
+      const prevTable = document.getElementById("mPrevTableCard");
+      const nextTable = document.getElementById("mNextTableCard");
+
+      if (typeof mState !== "undefined") {
+        if (prev) {
+          prev.style.display = (mState.currentIndex || 0) <= 0 ? "none" : "";
+        }
+        if (next) {
+          const total = Array.isArray(mState.currentItems) ? mState.currentItems.length : 0;
+          next.style.display = total <= 1 || (mState.currentIndex || 0) >= total - 1 ? "none" : "";
+        }
+
+        if (prevTable) {
+          prevTable.style.display = (mState.tableIndex || 0) <= 0 ? "none" : "";
+        }
+        if (nextTable) {
+          const totalTable = Array.isArray(mState.tableCards) ? mState.tableCards.length : 0;
+          nextTable.style.display = totalTable <= 1 || (mState.tableIndex || 0) >= totalTable - 1 ? "none" : "";
+        }
+      }
+    } catch (e) {}
+  }
+
+  document.addEventListener("click", function () {
+    setTimeout(updateCardNavVisibility, 30);
+  });
+
+  window.addEventListener("load", function () {
+    updateCardNavVisibility();
+    setInterval(updateCardNavVisibility, 400);
+  });
+})();
+</script>
+
 </body>
 </html>
