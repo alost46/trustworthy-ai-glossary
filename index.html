@@ -391,41 +391,24 @@ document.addEventListener("DOMContentLoaded",async()=>{initDesktopEvents();initM
 
 
 
+
 <script>
-/* PATCH: safe Exit for Facebook/In-app browsers */
+/* PATCH: direct Exit without intermediate screen */
 (function(){
-  var savedAppHtml = null;
-  var savedBodyClass = null;
-
-  function restoreGlossary(){
-    if (savedAppHtml !== null) {
-      document.body.innerHTML = savedAppHtml;
-      document.body.className = savedBodyClass || "";
-      try {
-        if (typeof init === "function") init();
-      } catch(e) {}
-      try {
-        if (typeof loadData === "function") loadData();
-      } catch(e) {}
-      try {
-        location.reload();
-      } catch(e) {}
-    } else {
-      try { window.history.back(); } catch(e) {}
-    }
-  }
-
   function exitGlossary(){
+    try {
+      if (window.history.length > 1) {
+        window.history.back();
+        return;
+      }
+    } catch(e) {}
+
     try {
       window.open("", "_self");
       window.close();
     } catch(e) {}
 
-    if (savedAppHtml === null) {
-      savedAppHtml = document.body.innerHTML;
-      savedBodyClass = document.body.className;
-    }
-
+    // fallback: simple neutral page
     document.body.className = "mobile-body";
     document.body.innerHTML = `
       <main style="
@@ -433,56 +416,17 @@ document.addEventListener("DOMContentLoaded",async()=>{initDesktopEvents();initM
         display:flex;
         align-items:center;
         justify-content:center;
-        padding:24px;
         font-family:Segoe UI, Arial, sans-serif;
         background:#f5f7fb;
         color:#1f2a44;
         text-align:center;
+        padding:24px;
       ">
-        <section style="
-          width:min(440px, 100%);
-          background:#fff;
-          border:1px solid #d7ddea;
-          border-radius:18px;
-          box-shadow:0 8px 22px rgba(31,42,68,.08);
-          padding:24px 18px;
-        ">
-          <div style="font-size:42px;line-height:1;margin-bottom:12px;">⇥</div>
-          <h1 style="margin:0 0 8px;font-size:24px;line-height:1.25;">Выход</h1>
-          <h2 style="margin:0 0 18px;font-size:18px;line-height:1.25;color:#60708f;">Exit</h2>
-          <p style="margin:0 0 10px;font-size:16px;line-height:1.45;">
-            Встроенный браузер не позволяет странице закрыть вкладку.
-          </p>
-          <p style="margin:0 0 18px;font-size:15px;line-height:1.45;color:#60708f;">
-            This in-app browser does not allow the page to close the tab.
-          </p>
-          <div style="display:flex;flex-direction:column;gap:8px;align-items:stretch;">
-            <button type="button" id="exitBackBtn" class="safe-exit-back-btn">Назад / Back</button>
-            <button type="button" id="exitReturnBtn" class="safe-exit-return-btn">Вернуться в глоссарий / Return to glossary</button>
-          </div>
-        </section>
+        <div>
+          <h1 style="margin:0;font-size:24px;">Выход / Exit</h1>
+        </div>
       </main>
     `;
-
-    var backBtn = document.getElementById("exitBackBtn");
-    if (backBtn) {
-      backBtn.addEventListener("click", function(){
-        try {
-          window.history.back();
-        } catch(e) {}
-      });
-    }
-
-    var returnBtn = document.getElementById("exitReturnBtn");
-    if (returnBtn) {
-      returnBtn.addEventListener("click", function(){
-        try {
-          location.reload();
-        } catch(e) {
-          restoreGlossary();
-        }
-      });
-    }
   }
 
   document.addEventListener("DOMContentLoaded", function(){
