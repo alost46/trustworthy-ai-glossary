@@ -55,33 +55,83 @@ body.mobile-body .card-nav {
 </style>
 
 
+
 <style>
+/* PATCH: compact mobile header Home/Exit controls */
 .exit-btn{
-  position: fixed;
-  top: 14px;
-  right: 14px;
-  z-index: 9999;
-  display:flex;
-  align-items:center;
-  gap:8px;
-  padding:8px 12px;
-  border:1px solid #999;
+  position:fixed;
+  top:10px;
+  right:10px;
+  z-index:9999;
+  width:72px;
+  min-height:42px;
+  padding:4px 6px;
+  border:1px solid var(--line, #d7ddea);
   border-radius:12px;
   background:#fff;
-  text-decoration:none;
-  color:#1f2d4d;
-  font-weight:600;
-  font-size:14px;
+  color:var(--text, #1f2a44);
+  box-shadow:0 3px 10px rgba(31,42,68,.10);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:4px;
+  font-family:inherit;
+  cursor:pointer;
+  line-height:1.05;
 }
-.exit-icon{font-size:18px;}.exit-btn{cursor:pointer;font-family:inherit;}
+.exit-icon{display:flex;align-items:center;justify-content:center;flex:0 0 auto}
+.exit-text{display:flex;flex-direction:column;align-items:flex-start;font-weight:900}
+.exit-text .ru{font-size:12px}
+.exit-text .en{font-size:10px;color:var(--muted,#60708f);margin-top:1px}
+body.desktop-body .exit-btn{display:none}
+body.mobile-body .m-topbar{
+  padding-right:86px;
+  align-items:center;
+}
+body.mobile-body .home-btn{
+  width:58px!important;
+  min-width:58px!important;
+  height:50px!important;
+  padding:4px 3px!important;
+  display:flex!important;
+  flex-direction:column!important;
+  align-items:center!important;
+  justify-content:center!important;
+  gap:1px!important;
+  line-height:1.05!important;
+  margin-right:0!important;
+}
+body.mobile-body .home-btn .home-icon{font-size:16px;line-height:1}
+body.mobile-body .home-btn .home-text{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+}
+body.mobile-body .home-btn .ru{display:block!important;font-size:12px!important;line-height:1.05!important}
+body.mobile-body .home-btn .en{display:block!important;font-size:10px!important;line-height:1.05!important;margin-top:1px!important;color:var(--muted,#60708f)!important}
+body.mobile-body .screen-title{
+  flex:1 1 auto;
+  min-width:0;
+  padding-left:2px;
+}
+body.mobile-body #mHomeScreen h1{
+  padding-right:88px;
+  font-size:22px;
+}
 </style>
 
 </head>
 <body>
 
-<button type="button" class="exit-btn" id="exitBtn" title="Выход / Exit">
-  <span class="exit-icon">⇥</span>
-  <span>Выход<br><span style="font-size:0.9em;">Exit</span></span>
+<button type="button" class="exit-btn" id="exitBtn" title="Выход / Exit" aria-label="Выход / Exit">
+  <span class="exit-icon" aria-hidden="true">
+    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M10 4H5v16h5"></path>
+      <path d="M13 12h8"></path>
+      <path d="M17 8l4 4-4 4"></path>
+    </svg>
+  </span>
+  <span class="exit-text"><span class="ru">Выход</span><span class="en">Exit</span></span>
 </button>
 
   <div class="mode-switch" aria-label="Переключатель интерфейса / Interface switch">
@@ -115,12 +165,12 @@ body.mobile-body .card-nav {
   </main>
 
   <main id="mobileApp" class="hidden">
-    <section id="mHomeScreen" class="m-screen active"><h1>Глоссарий Trustworthy AI <span class="en-inline">/ Trustworthy AI Glossary</span></h1><div class="m-panel"><div class="section-title">Главная страница / Home page</div><div class="home-menu"><button class="m-btn" id="mGoSearch"><span class="ru">Поиск по строке</span><span class="en">Text search</span></button><button class="m-btn" id="mGoEnLetters"><span class="ru">Поиск по английской букве</span><span class="en">English initial letter</span></button><button class="m-btn" id="mGoRuLetters"><span class="ru">Поиск по русской букве</span><span class="en">Russian initial letter</span></button><button class="m-btn" id="mGoEnList"><span class="ru">Английские термины</span><span class="en">English terms</span></button><button class="m-btn" id="mGoRuList"><span class="ru">Русские термины</span><span class="en">Russian terms</span></button><button class="m-btn primary-btn" id="mGoCardsTable"><span class="ru">Таблица карточек</span><span class="en">Cards table</span></button></div></div><div id="mHomeStatus" class="status"></div></section>
-    <section id="mSearchScreen" class="m-screen"><div class="m-topbar"><button class="m-btn home-btn" data-m-home>🏠 <span class="ru">Домой</span> <span class="en">Home</span></button><div class="screen-title"><span class="ru">Поиск по строке</span><span class="en">Text search</span></div></div><div class="m-panel"><div class="section-title">Строка поиска / Search field</div><div class="search-line"><div id="mSearchBox" class="m-search-box"></div><button id="mClearSearch" class="m-btn small-btn" title="Очистить / Clear" aria-label="Очистить / Clear">×</button></div><div id="mSearchStatus" class="status"></div></div><div class="m-panel"><div class="section-title">Клавиатура / Keyboard</div><div id="mSearchKeyboard" class="keyboard"></div></div><div class="m-panel work-area"><div class="result-header"><span id="mSearchResultsTitle">Совпадения / Matches</span><span id="mSearchResultsCount">0</span></div><div id="mSearchResults" class="scroll-area"></div></div></section>
-    <section id="mLettersScreen" class="m-screen"><div class="m-topbar"><button class="m-btn home-btn" data-m-home>🏠 <span class="ru">Домой</span> <span class="en">Home</span></button><div id="mLettersTitle" class="screen-title">Буквы / Letters</div></div><div class="m-panel"><div id="mLettersPanelTitle" class="section-title">Буквы / Letters</div><div id="mLettersBox" class="letters"></div><div id="mLettersStatus" class="status"></div></div><div class="m-panel work-area"><div class="result-header"><span id="mLettersResultsTitle">Список / List</span><span id="mLettersResultsCount">0</span></div><div id="mLettersResults" class="scroll-area"></div></div></section>
-    <section id="mListScreen" class="m-screen"><div class="m-topbar"><button class="m-btn home-btn" data-m-home>🏠 <span class="ru">Домой</span> <span class="en">Home</span></button><div id="mListTitle" class="screen-title">Список / List</div></div><div class="m-panel work-area"><div class="result-header"><span id="mListResultsTitle">Термины / Terms</span><span id="mListResultsCount">0</span></div><div id="mListResults" class="scroll-area"></div></div></section>
-    <section id="mCardScreen" class="m-screen"><div class="m-topbar"><button class="m-btn home-btn" data-m-home>🏠 <span class="ru">Домой</span> <span class="en">Home</span></button><div class="screen-title"><span class="ru">Карточка</span><span class="en">Card</span></div></div><div class="card-nav"><button class="m-btn" id="mPrevCard"><span class="ru">← Предыдущая</span><span class="en">Previous</span></button><button class="m-btn" id="mNextCard"><span class="ru">Следующая →</span><span class="en">Next</span></button></div><div id="mSingleCard" class="scroll-area"></div></section>
-    <section id="mCardsTableScreen" class="m-screen"><div class="m-topbar"><button class="m-btn home-btn" data-m-home>🏠 <span class="ru">Домой</span> <span class="en">Home</span></button><div class="screen-title"><span class="ru">Карточки</span><span class="en">Cards</span></div></div><div class="card-nav"><button class="m-btn" id="mPrevTableCard"><span class="ru">← Предыдущая</span><span class="en">Previous</span></button><button class="m-btn" id="mNextTableCard"><span class="ru">Следующая →</span><span class="en">Next</span></button></div><div id="mCardsTableBox" class="scroll-area"></div></section>
+    <section id="mHomeScreen" class="m-screen active"><h1>Глоссарий терминов ИИ</h1><div class="m-panel"><div class="section-title">Главная страница / Home page</div><div class="home-menu"><button class="m-btn" id="mGoSearch"><span class="ru">Поиск по строке</span><span class="en">Text search</span></button><button class="m-btn" id="mGoEnLetters"><span class="ru">Поиск по английской букве</span><span class="en">English initial letter</span></button><button class="m-btn" id="mGoRuLetters"><span class="ru">Поиск по русской букве</span><span class="en">Russian initial letter</span></button><button class="m-btn" id="mGoEnList"><span class="ru">Английские термины</span><span class="en">English terms</span></button><button class="m-btn" id="mGoRuList"><span class="ru">Русские термины</span><span class="en">Russian terms</span></button><button class="m-btn primary-btn" id="mGoCardsTable"><span class="ru">Таблица карточек</span><span class="en">Cards table</span></button></div></div><div id="mHomeStatus" class="status"></div></section>
+    <section id="mSearchScreen" class="m-screen"><div class="m-topbar"><button class="m-btn home-btn" data-m-home aria-label="Домой / Home"><span class="home-icon">🏠</span><span class="home-text"><span class="ru">Домой</span><span class="en">Home</span></span></button><div class="screen-title"><span class="ru">Поиск по строке</span><span class="en">Text search</span></div></div><div class="m-panel"><div class="section-title">Строка поиска / Search field</div><div class="search-line"><div id="mSearchBox" class="m-search-box"></div><button id="mClearSearch" class="m-btn small-btn" title="Очистить / Clear" aria-label="Очистить / Clear">×</button></div><div id="mSearchStatus" class="status"></div></div><div class="m-panel"><div class="section-title">Клавиатура / Keyboard</div><div id="mSearchKeyboard" class="keyboard"></div></div><div class="m-panel work-area"><div class="result-header"><span id="mSearchResultsTitle">Совпадения / Matches</span><span id="mSearchResultsCount">0</span></div><div id="mSearchResults" class="scroll-area"></div></div></section>
+    <section id="mLettersScreen" class="m-screen"><div class="m-topbar"><button class="m-btn home-btn" data-m-home aria-label="Домой / Home"><span class="home-icon">🏠</span><span class="home-text"><span class="ru">Домой</span><span class="en">Home</span></span></button><div id="mLettersTitle" class="screen-title">Буквы / Letters</div></div><div class="m-panel"><div id="mLettersPanelTitle" class="section-title">Буквы / Letters</div><div id="mLettersBox" class="letters"></div><div id="mLettersStatus" class="status"></div></div><div class="m-panel work-area"><div class="result-header"><span id="mLettersResultsTitle">Список / List</span><span id="mLettersResultsCount">0</span></div><div id="mLettersResults" class="scroll-area"></div></div></section>
+    <section id="mListScreen" class="m-screen"><div class="m-topbar"><button class="m-btn home-btn" data-m-home aria-label="Домой / Home"><span class="home-icon">🏠</span><span class="home-text"><span class="ru">Домой</span><span class="en">Home</span></span></button><div id="mListTitle" class="screen-title">Список / List</div></div><div class="m-panel work-area"><div class="result-header"><span id="mListResultsTitle">Термины / Terms</span><span id="mListResultsCount">0</span></div><div id="mListResults" class="scroll-area"></div></div></section>
+    <section id="mCardScreen" class="m-screen"><div class="m-topbar"><button class="m-btn home-btn" data-m-home aria-label="Домой / Home"><span class="home-icon">🏠</span><span class="home-text"><span class="ru">Домой</span><span class="en">Home</span></span></button><div class="screen-title"><span class="ru">Карточка</span><span class="en">Card</span></div></div><div class="card-nav"><button class="m-btn" id="mPrevCard"><span class="ru">← Предыдущая</span><span class="en">Previous</span></button><button class="m-btn" id="mNextCard"><span class="ru">Следующая →</span><span class="en">Next</span></button></div><div id="mSingleCard" class="scroll-area"></div></section>
+    <section id="mCardsTableScreen" class="m-screen"><div class="m-topbar"><button class="m-btn home-btn" data-m-home aria-label="Домой / Home"><span class="home-icon">🏠</span><span class="home-text"><span class="ru">Домой</span><span class="en">Home</span></span></button><div class="screen-title"><span class="ru">Карточки</span><span class="en">Cards</span></div></div><div class="card-nav"><button class="m-btn" id="mPrevTableCard"><span class="ru">← Предыдущая</span><span class="en">Previous</span></button><button class="m-btn" id="mNextTableCard"><span class="ru">Следующая →</span><span class="en">Next</span></button></div><div id="mCardsTableBox" class="scroll-area"></div></section>
   </main>
 
 <script>
