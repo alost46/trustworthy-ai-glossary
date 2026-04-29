@@ -73,16 +73,16 @@ body.mobile-body .card-nav {
   font-weight:600;
   font-size:14px;
 }
-.exit-icon{font-size:18px;}
+.exit-icon{font-size:18px;}.exit-btn{cursor:pointer;font-family:inherit;}
 </style>
 
 </head>
 <body>
 
-<a href="about:blank" class="exit-btn" title="Выход / Exit">
+<button type="button" class="exit-btn" id="exitBtn" title="Выход / Exit">
   <span class="exit-icon">⇥</span>
   <span>Выход<br><span style="font-size:0.9em;">Exit</span></span>
-</a>
+</button>
 
   <div class="mode-switch" aria-label="Переключатель интерфейса / Interface switch">
     <button id="modeDesktop" type="button" title="Компьютер / Desktop" aria-label="Компьютер / Desktop">
@@ -291,6 +291,32 @@ document.addEventListener("DOMContentLoaded",async()=>{initDesktopEvents();initM
       if (node) observer.observe(node, { childList: true, subtree: true });
     });
     refreshMobileUi();
+  });
+})();
+</script>
+
+
+<script>
+(function(){
+  function exitGlossary(){
+    try {
+      if (window.history.length > 1) {
+        window.history.back();
+        return;
+      }
+    } catch(e) {}
+    window.location.href = "https://www.google.com/";
+  }
+
+  document.addEventListener("DOMContentLoaded", function(){
+    var btn = document.getElementById("exitBtn");
+    if (btn) {
+      btn.addEventListener("click", exitGlossary);
+      btn.addEventListener("touchend", function(e){
+        e.preventDefault();
+        exitGlossary();
+      }, {passive:false});
+    }
   });
 })();
 </script>
