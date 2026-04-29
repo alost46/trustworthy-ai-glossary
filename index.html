@@ -165,7 +165,7 @@ body.mobile-body #mHomeScreen h1{
   </main>
 
   <main id="mobileApp" class="hidden">
-    <section id="mHomeScreen" class="m-screen active"><h1>Глоссарий терминов ИИ</h1><div class="m-panel"><div class="section-title">Главная страница / Home page</div><div class="home-menu"><button class="m-btn" id="mGoSearch"><span class="ru">Поиск по строке</span><span class="en">Text search</span></button><button class="m-btn" id="mGoEnLetters"><span class="ru">Поиск по английской букве</span><span class="en">English initial letter</span></button><button class="m-btn" id="mGoRuLetters"><span class="ru">Поиск по русской букве</span><span class="en">Russian initial letter</span></button><button class="m-btn" id="mGoEnList"><span class="ru">Английские термины</span><span class="en">English terms</span></button><button class="m-btn" id="mGoRuList"><span class="ru">Русские термины</span><span class="en">Russian terms</span></button><button class="m-btn primary-btn" id="mGoCardsTable"><span class="ru">Таблица карточек</span><span class="en">Cards table</span></button></div></div><div id="mHomeStatus" class="status"></div></section>
+    <section id="mHomeScreen" class="m-screen active"><h1>Глоссарий терминов ИИ<br><span style="font-size:0.72em;font-weight:700;color:#60708f;">AI Terms Glossary</span></h1><div class="m-panel"><div class="section-title">Главная страница / Home page</div><div class="home-menu"><button class="m-btn" id="mGoSearch"><span class="ru">Поиск по строке</span><span class="en">Text search</span></button><button class="m-btn" id="mGoEnLetters"><span class="ru">Поиск по английской букве</span><span class="en">English initial letter</span></button><button class="m-btn" id="mGoRuLetters"><span class="ru">Поиск по русской букве</span><span class="en">Russian initial letter</span></button><button class="m-btn" id="mGoEnList"><span class="ru">Английские термины</span><span class="en">English terms</span></button><button class="m-btn" id="mGoRuList"><span class="ru">Русские термины</span><span class="en">Russian terms</span></button><button class="m-btn primary-btn" id="mGoCardsTable"><span class="ru">Таблица карточек</span><span class="en">Cards table</span></button></div></div><div id="mHomeStatus" class="status"></div></section>
     <section id="mSearchScreen" class="m-screen"><div class="m-topbar"><button class="m-btn home-btn" data-m-home aria-label="Домой / Home"><span class="home-icon">🏠</span><span class="home-text"><span class="ru">Домой</span><span class="en">Home</span></span></button><div class="screen-title"><span class="ru">Поиск по строке</span><span class="en">Text search</span></div></div><div class="m-panel"><div class="section-title">Строка поиска / Search field</div><div class="search-line"><div id="mSearchBox" class="m-search-box"></div><button id="mClearSearch" class="m-btn small-btn" title="Очистить / Clear" aria-label="Очистить / Clear">×</button></div><div id="mSearchStatus" class="status"></div></div><div class="m-panel"><div class="section-title">Клавиатура / Keyboard</div><div id="mSearchKeyboard" class="keyboard"></div></div><div class="m-panel work-area"><div class="result-header"><span id="mSearchResultsTitle">Совпадения / Matches</span><span id="mSearchResultsCount">0</span></div><div id="mSearchResults" class="scroll-area"></div></div></section>
     <section id="mLettersScreen" class="m-screen"><div class="m-topbar"><button class="m-btn home-btn" data-m-home aria-label="Домой / Home"><span class="home-icon">🏠</span><span class="home-text"><span class="ru">Домой</span><span class="en">Home</span></span></button><div id="mLettersTitle" class="screen-title">Буквы / Letters</div></div><div class="m-panel"><div id="mLettersPanelTitle" class="section-title">Буквы / Letters</div><div id="mLettersBox" class="letters"></div><div id="mLettersStatus" class="status"></div></div><div class="m-panel work-area"><div class="result-header"><span id="mLettersResultsTitle">Список / List</span><span id="mLettersResultsCount">0</span></div><div id="mLettersResults" class="scroll-area"></div></div></section>
     <section id="mListScreen" class="m-screen"><div class="m-topbar"><button class="m-btn home-btn" data-m-home aria-label="Домой / Home"><span class="home-icon">🏠</span><span class="home-text"><span class="ru">Домой</span><span class="en">Home</span></span></button><div id="mListTitle" class="screen-title">Список / List</div></div><div class="m-panel work-area"><div class="result-header"><span id="mListResultsTitle">Термины / Terms</span><span id="mListResultsCount">0</span></div><div id="mListResults" class="scroll-area"></div></div></section>
@@ -346,16 +346,72 @@ document.addEventListener("DOMContentLoaded",async()=>{initDesktopEvents();initM
 </script>
 
 
+
 <script>
+/* PATCH: safe Exit for Facebook/In-app browsers */
 (function(){
   function exitGlossary(){
     try {
-      if (window.history.length > 1) {
-        window.history.back();
-        return;
-      }
+      window.open("", "_self");
+      window.close();
     } catch(e) {}
-    window.location.href = "https://www.google.com/";
+
+    try {
+      document.body.classList.remove("desktop-body");
+      document.body.classList.add("mobile-body");
+    } catch(e) {}
+
+    document.body.innerHTML = `
+      <main style="
+        min-height:100vh;
+        display:flex;
+        align-items:center;
+        justify-content:center;
+        padding:24px;
+        font-family:Segoe UI, Arial, sans-serif;
+        background:#f5f7fb;
+        color:#1f2a44;
+        text-align:center;
+      ">
+        <section style="
+          width:min(420px, 100%);
+          background:#fff;
+          border:1px solid #d7ddea;
+          border-radius:18px;
+          box-shadow:0 8px 22px rgba(31,42,68,.08);
+          padding:24px 18px;
+        ">
+          <div style="font-size:42px;line-height:1;margin-bottom:12px;">⇥</div>
+          <h1 style="margin:0 0 10px;font-size:24px;line-height:1.25;">Выход</h1>
+          <h2 style="margin:0 0 18px;font-size:18px;line-height:1.25;color:#60708f;">Exit</h2>
+          <p style="margin:0 0 10px;font-size:16px;line-height:1.45;">
+            Можно закрыть эту вкладку или вернуться назад.
+          </p>
+          <p style="margin:0 0 18px;font-size:15px;line-height:1.45;color:#60708f;">
+            You can close this tab or go back.
+          </p>
+          <button type="button" id="exitBackBtn" style="
+            border:1px solid #d7ddea;
+            background:#2f6fed;
+            color:#fff;
+            border-radius:14px;
+            padding:12px 16px;
+            font-size:16px;
+            font-weight:800;
+            cursor:pointer;
+          ">Назад / Back</button>
+        </section>
+      </main>
+    `;
+
+    var backBtn = document.getElementById("exitBackBtn");
+    if (backBtn) {
+      backBtn.addEventListener("click", function(){
+        try {
+          window.history.back();
+        } catch(e) {}
+      });
+    }
   }
 
   document.addEventListener("DOMContentLoaded", function(){
