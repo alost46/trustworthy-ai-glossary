@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>ClockViewerAndroid</title>
+
+<link rel="manifest" href="clock_manifest.json">
+
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
+<style>
+body{
+  margin:0;
+  background:#0f172a;
+  overflow:hidden;
+  font-family:Arial;
+}
+canvas{
+  width:100vw;
+  height:100vh;
+  display:block;
+}
+
+#exitBtn{
+  position:fixed;
+  top:10px;
+  left:50%;
+  transform:translateX(-50%);
+  background:rgba(0,0,0,.5);
+  color:white;
+  border:none;
+  padding:8px 14px;
+  border-radius:10px;
+  z-index:10;
+}
+
+#exitHint{
+  position:fixed;
+  bottom:20px;
+  left:50%;
+  transform:translateX(-50%);
+  background:rgba(0,0,0,.7);
+  color:white;
+  padding:10px 14px;
+  border-radius:12px;
+  opacity:0;
+  transition:0.3s;
+}
+</style>
+</head>
+
+<body>
+
+<canvas id="clock"></canvas>
+<button id="exitBtn">✕</button>
+<div id="exitHint"></div>
+
+<script>
+const canvas=document.getElementById("clock");
+const ctx=canvas.getContext("2d");
+
+function resize(){
+  canvas.width=window.innerWidth;
+  canvas.height=window.innerHeight;
+}
+window.onresize=resize;
+resize();
+
+/* ===== SVG ===== */
+let svgImages=[];
+
+function parseSvgSet(text){
+  try{
+    const obj=JSON.parse(text);
+    if(!obj.symbols || obj.symbols.length!==12) return;
+
+    svgImages=obj.symbols.map(svg=>{
+      const img=new Image();
+      img.src="data:image/svg+xml;charset=utf-8,"+encodeURIComponent(svg);
+      return img;
+    });
+
+  }catch(e){}
+}
+
+/* ===== URL model ===== */
+if(location.hash.startsWith("#clock=")){
+  const encoded=location.hash.replace("#clock=","");
+  const json=decodeURIComponent(escape(atob(encoded)));
+  const data=JSON.parse(json);
+
+  if(data.svgSet){
+    parseSvgSet(data.svgSet);
+  }
+}
+
+/* ===== EXIT ===== */
+function isIOS(){
+  return /iPhone|iPad/.test(navigator.userAgent);
+}
+
+document.getElementById("exitBtn").onclick=()=>{
+  const hint=document.getElementById("exitHint");
+
+  if(isIOS()){
+    hint.innerText="Смахните снизу вверх";
+  }else{
+    hint.innerText="Кнопка Назад или Домой";
+  }
+
+  hint.style.opacity=1;
+  setTimeout(()=>hint.style.opacity=0,2000);
+};
+
+/* ===== DRAW ===== */
+function draw(){
+  const W=canvas.width;
+  const H=canvas.height;
+  const R=Math.min(W,H)/2*0.8;
+
+  ctx.fillStyle="#0f172a";
+  ctx.fillRect(0,0,W,H);
+
+  ctx.save();
+  ctx.translate(W/2,H/2);
+
+  for(let i=0;i<12;i++){
+    const a=i*Math.PI/6;
+
+    const x=Math.sin(a)*R;
+    const y=-Math.cos(a)*R;
+
+    if(svgImages.length===12){
+      const img=svgImages[i];
+      if(img.complete){
+        ctx.drawImage(img,x-30,y-30,60,60);
+      }
+    }else{
+      ctx.fillStyle="white";
+      ctx.font="30px Arial";
+      ctx.textAlign="center";
+      ctx.fillText(i+1,x,y);
+    }
+  }
+
+  ctx.restore();
+  requestAnimationFrame(draw);
+}
+
+draw();
+
+/* ===== PWA ===== */
+if("serviceWorker" in navigator){
+  navigator.serviceWorker.register("clock_service_worker.js");
+}
+</script>
+
+</body>
+</html>

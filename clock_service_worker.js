@@ -1,7 +1,7 @@
-const CACHE_NAME = "clock-pwa-v7";
+const CACHE_NAME = "clock-pwa-v8";
 
 const FILES_TO_CACHE = [
-  "clock_viewer_android.html",
+  "ClockViewerAndroid.html",
   "clock_manifest.json",
   "clock_icon_192.png",
   "clock_icon_512.png"
