@@ -3,948 +3,160 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="Clock">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>Clock Viewer</title>
-<style>
-:root{--bg:#0f172a;--text:#1f2937;--muted:#64748b}
-*{box-sizing:border-box}
-body{margin:0;background:var(--bg);font-family:Arial,sans-serif;overflow:hidden}
-.clock-screen{width:100vw;height:100vh;display:flex;align-items:center;justify-content:center}
-.clock-wrap{width:100vw;height:100vh}
-canvas{width:100vw;height:100vh;display:block}
-.settings-btn{display:none;position:fixed;right:20px;bottom:20px;width:60px;height:60px;border-radius:50%;font-size:28px;border:none;background:white;cursor:pointer;box-shadow:0 8px 24px rgba(0,0,0,.28)}
-.settings-panel{position:fixed;inset:0;background:rgba(0,0,0,.85);display:none;align-items:center;justify-content:center;padding:14px}
-.settings-panel.active{display:flex}
-.panel{background:#fff;padding:20px;border-radius:16px;width:min(720px,96%);max-height:92vh;overflow-y:auto;color:var(--text)}
-.panel h2{margin:0 0 16px}
-.control{margin-bottom:14px}
-.control label{font-weight:bold;display:block;margin-bottom:5px}
-input,select{width:100%;padding:8px}
-input[type="checkbox"]{width:auto}
-.color-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-.color-row{display:flex;align-items:center;gap:10px}
-.color-row input[type="color"]{width:52px;height:40px;padding:2px}
-.color-row span{font-size:13px;color:var(--muted);font-family:Consolas,monospace}
-.done-btn{width:100%;padding:12px;background:#2563eb;color:#fff;border:none;border-radius:10px;cursor:pointer;font-weight:bold;font-size:16px}
-.secondary-btn{background:#64748b}
-.preview{margin-top:8px;font-size:24px;text-align:center;padding:8px;border:1px solid #e2e8f0;border-radius:10px;background:#f8fafc}
-small{display:block;color:var(--muted);margin-top:4px;line-height:1.35}
-.hex-box,.time-box,.model-box{border:1px solid #e2e8f0;border-radius:14px;padding:12px;background:#f8fafc}
-.hex-controls,.time-grid,.model-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
-.channel-buttons{display:flex;gap:8px;margin-bottom:10px}
-.channel-buttons button{flex:1;padding:8px;border:1px solid #cbd5e1;background:#fff;border-radius:8px;cursor:pointer;font-weight:bold}
-.channel-buttons button.active{background:#2563eb;color:#fff}
-.hex-table{display:grid;grid-template-columns:repeat(16,1fr);gap:3px}
-.hex-cell{font-family:Consolas,monospace;font-size:11px;padding:5px 0;border:1px solid #cbd5e1;background:#fff;border-radius:4px;cursor:pointer;text-align:center}
-.hex-cell:hover{outline:2px solid #2563eb}
-.hex-cell.active{background:#111827;color:#fff}
-.hex-preview{height:36px;border-radius:8px;border:1px solid #cbd5e1;margin-top:10px}
-.model-list{display:flex;flex-direction:column;gap:8px;margin-top:10px}
-.model-row{display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:center;background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:8px}
-.model-name{font-weight:bold;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.model-row button{padding:7px 10px;border:none;border-radius:8px;color:#fff;cursor:pointer;font-weight:bold}
-.load-model{background:#2563eb}
-.delete-model{background:#dc2626}
 
-#exitBtn,#fullscreenBtn{position:fixed;top:10px;background:rgba(0,0,0,.42);color:#fff;border:none;border-radius:12px;padding:6px 14px;font-size:18px;line-height:1;cursor:pointer;z-index:20;backdrop-filter:blur(6px);box-shadow:0 4px 14px rgba(0,0,0,.25)}
-#exitBtn{left:calc(50% - 34px);transform:translateX(-50%)}
-#fullscreenBtn{left:calc(50% + 34px);transform:translateX(-50%)}
-#exitBtn:hover,#fullscreenBtn:hover{background:rgba(0,0,0,.62)}
-#exitBtn.ios-single-exit{left:50%;transform:translateX(-50%)}
-@media(max-width:520px){
-  .color-grid,.hex-controls,.time-grid,.model-grid{grid-template-columns:1fr}
-  .hex-cell{font-size:9px;padding:4px 0}
-  .model-row{grid-template-columns:1fr}
+<title>Clock Viewer</title>
+
+<link rel="manifest" href="clock_manifest.json">
+
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
+<style>
+body{
+  margin:0;
+  background:#0f172a;
+  overflow:hidden;
+  font-family:Arial;
+}
+canvas{
+  width:100vw;
+  height:100vh;
+  display:block;
+}
+
+#exitBtn{
+  position:fixed;
+  top:10px;
+  left:50%;
+  transform:translateX(-50%);
+  background:rgba(0,0,0,.5);
+  color:white;
+  border:none;
+  padding:8px 14px;
+  border-radius:10px;
+  z-index:10;
+}
+
+#exitHint{
+  position:fixed;
+  bottom:20px;
+  left:50%;
+  transform:translateX(-50%);
+  background:rgba(0,0,0,.7);
+  color:white;
+  padding:10px 14px;
+  border-radius:12px;
+  opacity:0;
+  transition:0.3s;
 }
 </style>
 </head>
+
 <body>
 
-<div class="clock-screen">
-  <div class="clock-wrap" id="clockWrap">
-    <canvas id="clock"></canvas>
-  </div>
-  <button class="settings-btn" id="openSettings">⚙️</button>
-</div>
-
-<button id="exitBtn" type="button" aria-label="Выход">✕</button>
-<button id="fullscreenBtn" type="button" aria-label="Полный экран">⛶</button>
-
-<div class="settings-panel" id="settingsPanel">
-  <div class="panel">
-    <h2>⚙️ Конструктор часов</h2>
-
-    <div class="control model-box">
-      <label>Модели часов</label>
-      <div class="model-grid">
-        <div>
-          <label>Имя модели</label>
-          <input type="text" id="modelName" placeholder="Например: Неон, Римские, Иврит">
-        </div>
-        <div>
-          <label>&nbsp;</label>
-          <button type="button" class="done-btn" id="saveModel">Сохранить модель</button>
-          <button type="button" class="done-btn secondary-btn" id="exportHtml" style="margin-top:8px;">Export HTML</button>
-          <button type="button" class="done-btn secondary-btn" id="exportLink" style="margin-top:8px;background:#059669;">Export LINK</button>
-        </div>
-      </div>
-      <small id="modelStatus">Сохранённые модели появятся ниже.</small>
-      <div class="model-list" id="modelList"></div>
-    </div>
-
-    <div class="control">
-      <label>Размер часов</label>
-      <input type="range" id="clockSize" min="10" max="100" value="100">
-      <small>100 = максимально вписать циферблат в экран.</small>
-    </div>
-
-    <div class="control">
-      <label><input type="checkbox" id="autoDialAspect" checked> Автоформа под экран</label>
-      <small>Если включено, циферблат сам подстраивается под горизонтальный или вертикальный формат.</small>
-    </div>
-
-    <div class="control">
-      <label>Соотношение сторон циферблата: <span id="dialAspectValue">1.00</span></label>
-      <input type="range" id="dialAspect" min="0.50" max="2.00" step="0.01" value="1.00">
-      <small>Работает, если автоформа выключена. 1.00 = круг.</small>
-    </div>
-
-    <div class="control time-box">
-      <label>Время</label>
-      <div class="time-grid">
-        <div>
-          <label><input type="checkbox" id="showDigital24" checked> Показывать 24-часовое время</label>
-        </div>
-        <div>
-          <label>Ручная установка времени</label>
-          <input type="text" id="manualTime" value="12:00" placeholder="HH:MM" maxlength="5">
-          <button type="button" class="done-btn" id="setManualTime" style="margin-top:8px;">Установить вручную</button>
-          <button type="button" class="done-btn secondary-btn" id="useDeviceTime" style="margin-top:8px;">Время устройства</button>
-          <small id="timeStatus">Сейчас используется время устройства.</small>
-        </div>
-      </div>
-    </div>
-
-    <div class="control">
-      <label>Цвета</label>
-      <div class="color-grid">
-        <div><label>Фон экрана</label><div class="color-row"><input type="color" id="screenBgColorPicker" value="#0f172a"><span id="screenBgColorValue">#0f172a</span></div></div>
-        <div><label>Фон циферблата</label><div class="color-row"><input type="color" id="faceColorPicker" value="#111111"><span id="faceColorValue">#111111</span></div></div>
-        <div><label>Обод</label><div class="color-row"><input type="color" id="accentColorPicker" value="#00ffcc"><span id="accentColorValue">#00ffcc</span></div></div>
-        <div><label>Часовая</label><div class="color-row"><input type="color" id="hourHandColorPicker" value="#00ffcc"><span id="hourHandColorValue">#00ffcc</span></div></div>
-        <div><label>Минутная</label><div class="color-row"><input type="color" id="minuteHandColorPicker" value="#00ffcc"><span id="minuteHandColorValue">#00ffcc</span></div></div>
-        <div><label>Секундная</label><div class="color-row"><input type="color" id="secondHandColorPicker" value="#ff0000"><span id="secondHandColorValue">#ff0000</span></div></div>
-        <div><label>Символы</label><div class="color-row"><input type="color" id="symbolColorPicker" value="#ffffff"><span id="symbolColorValue">#ffffff</span></div></div>
-      </div>
-    </div>
-
-    <div class="control hex-box">
-      <label>Точная HEX-палитра 16×16</label>
-      <div class="hex-controls">
-        <div>
-          <label>Что меняем</label>
-          <select id="hexTarget">
-            <option value="screenBgColor">Фон экрана</option>
-            <option value="faceColor">Фон циферблата</option>
-            <option value="accentColor">Обод</option>
-            <option value="hourHandColor">Часовая стрелка</option>
-            <option value="minuteHandColor">Минутная стрелка</option>
-            <option value="secondHandColor">Секундная стрелка</option>
-            <option value="symbolColor">Символы часов</option>
-          </select>
-        </div>
-        <div>
-          <label>Текущий цвет</label>
-          <input type="text" id="hexCurrent" value="#0f172a">
-        </div>
-      </div>
-
-      <div class="channel-buttons">
-        <button id="channelR" class="active" type="button">R</button>
-        <button id="channelG" type="button">G</button>
-        <button id="channelB" type="button">B</button>
-      </div>
-
-      <div class="hex-table" id="hexTable"></div>
-      <div class="hex-preview" id="hexPreview"></div>
-    </div>
-
-    <div class="control">
-      <label>Яркость символов</label>
-      <input type="range" id="symbolGray" min="0" max="100" value="100">
-    </div>
-
-    <div class="control">
-      <label><input type="checkbox" id="showSeconds" checked> Секундная стрелка</label>
-    </div>
-
-    <div class="control">
-      <label><input type="checkbox" id="reverseTime"> Обратный ход</label>
-    </div>
-
-    <div class="control">
-      <label>Символы часов</label>
-      <input type="text" id="symbols" value="1 2 3 4 5 6 7 8 9 10 11 12">
-    </div>
-
-    <div class="control">
-      <label>Шрифт</label>
-      <select id="fontSelect">
-        <option>Arial</option>
-        <option>Georgia</option>
-        <option>Courier New</option>
-        <option>Segoe UI</option>
-        <option>Segoe UI Symbol</option>
-        <option>Segoe UI Emoji</option>
-        <option>Times New Roman</option>
-        <option>Verdana</option>
-        <option>monospace</option>
-        <option>serif</option>
-      </select>
-      <div class="preview" id="preview">1 2 3 IV ★ א</div>
-    </div>
-
-    <div class="control">
-      <label>Размер символов</label>
-      <input type="range" id="symbolSize" min="10" max="100" value="40">
-    </div>
-
-    <div class="control">
-      <label>Радиус символов</label>
-      <input type="range" id="symbolRadius" min="30" max="90" value="70">
-    </div>
-
-    <button class="done-btn" id="closeSettings">Готово</button>
-  </div>
-</div>
+<canvas id="clock"></canvas>
+<button id="exitBtn">✕</button>
+<div id="exitHint"></div>
 
 <script>
 const canvas=document.getElementById("clock");
 const ctx=canvas.getContext("2d");
-const panel=document.getElementById("settingsPanel");
-const settingsButton=document.getElementById("openSettings");
-const exitButton=document.getElementById("exitBtn");
-const fullscreenButton=document.getElementById("fullscreenBtn");
 
-function isIOSDevice(){
-  return /iPad|iPhone|iPod/.test(navigator.userAgent) ||
-    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+function resize(){
+  canvas.width=window.innerWidth;
+  canvas.height=window.innerHeight;
 }
+window.onresize=resize;
+resize();
 
-if(isIOSDevice()){
-  fullscreenButton.style.display="none";
-  exitButton.classList.add("ios-single-exit");
-}
+/* ===== SVG ===== */
+let svgImages=[];
 
-let constructorMode=false;
-let longPressTimer=null;
-
-function setConstructorMode(on){
-  constructorMode=Boolean(on);
-  settingsButton.style.display=constructorMode ? "block" : "none";
-}
-
-function toggleConstructorMode(){
-  setConstructorMode(!constructorMode);
-}
-
-exitButton.onclick=()=>{
-  location.href="https://www.google.com/";
-};
-
-async function toggleFullscreen(){
-  const doc=document;
-  const el=document.documentElement;
-
+function parseSvgSet(text){
   try{
-    if(doc.fullscreenElement || doc.webkitFullscreenElement){
-      if(doc.exitFullscreen){
-        await doc.exitFullscreen();
-      }else if(doc.webkitExitFullscreen){
-        doc.webkitExitFullscreen();
-      }
-    }else{
-      if(el.requestFullscreen){
-        await el.requestFullscreen();
-      }else if(el.webkitRequestFullscreen){
-        el.webkitRequestFullscreen();
-      }else{
-        console.log("Fullscreen API недоступен в этом браузере.");
-      }
-    }
-  }catch(e){
-    console.log("Fullscreen не включился:",e);
-  }
+    const obj=JSON.parse(text);
+    if(!obj.symbols || obj.symbols.length!==12) return;
 
-  setTimeout(resizeCanvasToScreen,120);
+    svgImages=obj.symbols.map(svg=>{
+      const img=new Image();
+      img.src="data:image/svg+xml;charset=utf-8,"+encodeURIComponent(svg);
+      return img;
+    });
+
+  }catch(e){}
 }
 
-if(!isIOSDevice()){
-  fullscreenButton.onclick=toggleFullscreen;
-}
+/* ===== URL model ===== */
+if(location.hash.startsWith("#clock=")){
+  const encoded=location.hash.replace("#clock=","");
+  const json=decodeURIComponent(escape(atob(encoded)));
+  const data=JSON.parse(json);
 
-/* Телефон: долгое нажатие по циферблату включает/выключает режим конструктора */
-canvas.addEventListener("pointerdown",e=>{
-  if(e.button && e.button!==0)return;
-  longPressTimer=setTimeout(()=>{
-    toggleConstructorMode();
-  },1200);
-});
-canvas.addEventListener("pointerup",()=>clearTimeout(longPressTimer));
-canvas.addEventListener("pointercancel",()=>clearTimeout(longPressTimer));
-canvas.addEventListener("pointermove",()=>clearTimeout(longPressTimer));
-
-/* ПК: правая кнопка мыши по циферблату включает/выключает режим конструктора */
-canvas.addEventListener("contextmenu",e=>{
-  e.preventDefault();
-  toggleConstructorMode();
-});
-
-let screenBgColor="#0f172a";
-let faceColor="#111111";
-let accentColor="#00ffcc";
-let hourHandColor="#00ffcc";
-let minuteHandColor="#00ffcc";
-let secondHandColor="#ff0000";
-let symbolColor="#ffffff";
-let symbolGray=100;
-let reverse=false;
-let showSecondHand=true;
-let showDigital24=true;
-let manualTimeMode=false;
-let manualTimeOffsetMs=0;
-let clockSizeValue=100;
-let dialAspect=1.0;
-let autoDialAspect=true;
-
-let font="Arial";
-let symbolSize=40;
-let radiusPercent=70;
-let symbols=["1","2","3","4","5","6","7","8","9","10","11","12"];
-
-const STORAGE_KEY="clock_constructor_models_v6";
-const VIEWER_URL="https://alost46.github.io/trustworthy-ai-glossary/clock_viewer.html";
-
-const colorMap={
-  screenBgColor:{picker:"screenBgColorPicker",value:"screenBgColorValue"},
-  faceColor:{picker:"faceColorPicker",value:"faceColorValue"},
-  accentColor:{picker:"accentColorPicker",value:"accentColorValue"},
-  hourHandColor:{picker:"hourHandColorPicker",value:"hourHandColorValue"},
-  minuteHandColor:{picker:"minuteHandColorPicker",value:"minuteHandColorValue"},
-  secondHandColor:{picker:"secondHandColorPicker",value:"secondHandColorValue"},
-  symbolColor:{picker:"symbolColorPicker",value:"symbolColorValue"}
-};
-
-document.getElementById("openSettings").onclick=()=>panel.classList.add("active");
-document.getElementById("closeSettings").onclick=()=>{panel.classList.remove("active");};
-
-const clockSizeInput=document.getElementById("clockSize");
-const dialAspectInput=document.getElementById("dialAspect");
-const dialAspectValue=document.getElementById("dialAspectValue");
-const autoDialAspectInput=document.getElementById("autoDialAspect");
-
-clockSizeInput.oninput=e=>clockSizeValue=Number(e.target.value);
-
-dialAspectInput.oninput=e=>{
-  dialAspect=Number(e.target.value);
-  dialAspectValue.textContent=dialAspect.toFixed(2);
-};
-
-autoDialAspectInput.onchange=e=>{
-  autoDialAspect=e.target.checked;
-};
-
-document.getElementById("showDigital24").onchange=e=>showDigital24=e.target.checked;
-
-const manualTimeInput=document.getElementById("manualTime");
-const timeStatus=document.getElementById("timeStatus");
-
-document.getElementById("setManualTime").onclick=()=>{
-  const v=manualTimeInput.value.trim();
-  const m=v.match(/^([01]\d|2[0-3]):([0-5]\d)$/);
-  if(!m){
-    timeStatus.textContent="Ошибка: введите время в формате HH:MM.";
-    return;
-  }
-
-  const now=new Date();
-
-  const wantedMs=Number(m[1])*60*60*1000+Number(m[2])*60*1000;
-  const currentMs=now.getHours()*60*60*1000+now.getMinutes()*60*1000+now.getSeconds()*1000+now.getMilliseconds();
-
-  manualTimeOffsetMs=wantedMs-currentMs;
-  manualTimeMode=true;
-  timeStatus.textContent="Установлено вручную и запущено: "+m[1]+":"+m[2];
-};
-
-document.getElementById("useDeviceTime").onclick=()=>{
-  manualTimeMode=false;
-  manualTimeOffsetMs=0;
-  timeStatus.textContent="Сейчас используется время устройства.";
-};
-
-function getTimeParts(){
-  const now=new Date();
-  let totalMs=now.getHours()*60*60*1000+now.getMinutes()*60*1000+now.getSeconds()*1000+now.getMilliseconds();
-
-  if(manualTimeMode)totalMs+=manualTimeOffsetMs;
-
-  const dayMs=24*60*60*1000;
-  totalMs=((totalMs%dayMs)+dayMs)%dayMs;
-
-  return {
-    hours:Math.floor(totalMs/(60*60*1000)),
-    minutes:Math.floor((totalMs%(60*60*1000))/(60*1000)),
-    seconds:Math.floor((totalMs%(60*1000))/1000),
-    milliseconds:totalMs%1000
-  };
-}
-
-function pad2(n){return String(n).padStart(2,"0");}
-
-function getColorVar(name){
-  return {screenBgColor,faceColor,accentColor,hourHandColor,minuteHandColor,secondHandColor,symbolColor}[name];
-}
-
-function setColorVar(name,value){
-  value=normalizeHex(value);
-
-  if(name==="screenBgColor")screenBgColor=value;
-  if(name==="faceColor")faceColor=value;
-  if(name==="accentColor")accentColor=value;
-  if(name==="hourHandColor")hourHandColor=value;
-  if(name==="minuteHandColor")minuteHandColor=value;
-  if(name==="secondHandColor")secondHandColor=value;
-  if(name==="symbolColor")symbolColor=value;
-
-  const m=colorMap[name];
-  document.getElementById(m.picker).value=value;
-  document.getElementById(m.value).textContent=value;
-  updateHexPanel();
-}
-
-function normalizeHex(v){
-  v=String(v||"").trim();
-  if(!v.startsWith("#"))v="#"+v;
-  if(/^#[0-9a-fA-F]{6}$/.test(v))return v.toLowerCase();
-  return "#000000";
-}
-
-Object.keys(colorMap).forEach(name=>{
-  const m=colorMap[name];
-  document.getElementById(m.picker).oninput=e=>setColorVar(name,e.target.value);
-});
-
-const hexTarget=document.getElementById("hexTarget");
-const hexCurrent=document.getElementById("hexCurrent");
-const hexPreview=document.getElementById("hexPreview");
-const hexTable=document.getElementById("hexTable");
-
-let activeChannel="R";
-
-document.getElementById("channelR").onclick=()=>setChannel("R");
-document.getElementById("channelG").onclick=()=>setChannel("G");
-document.getElementById("channelB").onclick=()=>setChannel("B");
-
-function setChannel(ch){
-  activeChannel=ch;
-  ["R","G","B"].forEach(x=>{
-    document.getElementById("channel"+x).classList.toggle("active",x===ch);
-  });
-  updateHexPanel();
-}
-
-hexTarget.onchange=updateHexPanel;
-hexCurrent.onchange=()=>setColorVar(hexTarget.value,hexCurrent.value);
-
-function buildHexTable(){
-  hexTable.innerHTML="";
-  for(let i=0;i<256;i++){
-    const hex=i.toString(16).padStart(2,"0").toUpperCase();
-    const cell=document.createElement("button");
-    cell.className="hex-cell";
-    cell.textContent=hex;
-    cell.type="button";
-    cell.onclick=()=>applyByte(hex);
-    hexTable.appendChild(cell);
+  if(data.svgSet){
+    parseSvgSet(data.svgSet);
   }
 }
 
-function applyByte(byteHex){
-  const target=hexTarget.value;
-  const color=getColorVar(target);
-  const r=color.slice(1,3);
-  const g=color.slice(3,5);
-  const b=color.slice(5,7);
-
-  let next="#";
-  if(activeChannel==="R")next+=byteHex.toLowerCase()+g+b;
-  if(activeChannel==="G")next+=r+byteHex.toLowerCase()+b;
-  if(activeChannel==="B")next+=r+g+byteHex.toLowerCase();
-
-  setColorVar(target,next);
+/* ===== EXIT ===== */
+function isIOS(){
+  return /iPhone|iPad/.test(navigator.userAgent);
 }
 
-function updateHexPanel(){
-  if(!hexTable.children.length)return;
+document.getElementById("exitBtn").onclick=()=>{
+  const hint=document.getElementById("exitHint");
 
-  const target=hexTarget.value;
-  const color=getColorVar(target);
-  hexCurrent.value=color;
-  hexPreview.style.background=color;
-
-  const byte=
-    activeChannel==="R"?color.slice(1,3):
-    activeChannel==="G"?color.slice(3,5):
-    color.slice(5,7);
-
-  [...hexTable.children].forEach(cell=>{
-    cell.classList.toggle("active",cell.textContent.toLowerCase()===byte.toLowerCase());
-  });
-}
-
-const symbolGrayInput=document.getElementById("symbolGray");
-const reverseInput=document.getElementById("reverseTime");
-const showSecondsInput=document.getElementById("showSeconds");
-const showDigital24Input=document.getElementById("showDigital24");
-const symbolsInput=document.getElementById("symbols");
-const fontSelect=document.getElementById("fontSelect");
-const symbolSizeInput=document.getElementById("symbolSize");
-const symbolRadiusInput=document.getElementById("symbolRadius");
-const preview=document.getElementById("preview");
-
-symbolGrayInput.oninput=e=>symbolGray=Number(e.target.value);
-reverseInput.onchange=e=>reverse=e.target.checked;
-showSecondsInput.onchange=e=>showSecondHand=e.target.checked;
-
-symbolsInput.oninput=e=>{
-  const arr=e.target.value.trim().split(/\s+/).filter(Boolean);
-  if(arr.length){symbols=arr;updatePreview();}
-};
-
-fontSelect.onchange=e=>{font=e.target.value;updatePreview();};
-symbolSizeInput.oninput=e=>{symbolSize=Number(e.target.value);updatePreview();};
-symbolRadiusInput.oninput=e=>radiusPercent=Number(e.target.value);
-
-function updatePreview(){
-  preview.style.fontFamily=`"${font}", Arial, sans-serif`;
-  preview.style.fontSize=Math.max(18,Math.min(symbolSize,56))+"px";
-  preview.textContent=symbols.slice(0,12).join(" ")||"1 2 3 IV ★ א";
-}
-
-function applyGrayToColor(hex,grayPercent){
-  const g=Math.max(0,Math.min(100,Number(grayPercent)))/100;
-  const clean=String(hex||"#ffffff").replace("#","");
-  const r=parseInt(clean.slice(0,2),16);
-  const gr=parseInt(clean.slice(2,4),16);
-  const b=parseInt(clean.slice(4,6),16);
-  return `rgb(${Math.round(r*g)}, ${Math.round(gr*g)}, ${Math.round(b*g)})`;
-}
-
-function drawHand(angle,length,width,color){
-  ctx.save();
-  ctx.rotate(angle);
-  ctx.beginPath();
-  ctx.moveTo(0,10);
-  ctx.lineTo(0,-length);
-  ctx.lineWidth=width;
-  ctx.lineCap="round";
-  ctx.strokeStyle=color;
-  ctx.stroke();
-  ctx.restore();
-}
-
-function drawDigitalTime(hours,minutes,R){
-  if(!showDigital24)return;
-
-  ctx.save();
-  ctx.font=`bold ${Math.round(R*.20)}px "${font}", Arial, sans-serif`;
-  ctx.textAlign="center";
-  ctx.textBaseline="middle";
-  ctx.fillStyle=applyGrayToColor(symbolColor,symbolGray);
-  ctx.fillText(pad2(hours)+":"+pad2(minutes),0,R*.23);
-  ctx.restore();
-}
-
-function resizeCanvasToScreen(){
-  const vv = window.visualViewport;
-  const w = Math.floor(vv ? vv.width : window.innerWidth);
-  const h = Math.floor(vv ? vv.height : window.innerHeight);
-
-  if(canvas.width !== w || canvas.height !== h){
-    canvas.width = w;
-    canvas.height = h;
-  }
-}
-
-function getEffectiveAspect(W,H){
-  if(autoDialAspect){
-    return Math.max(0.5,Math.min(2.0,W/H));
-  }
-  return dialAspect;
-}
-
-function calculateDialGeometry(W,H){
-  const margin = Math.max(40, Math.min(W,H) * 0.08);
-  const scale=clockSizeValue/100;
-  const availableW=Math.max(100,(W-margin*2)*scale);
-  const availableH=Math.max(100,(H-margin*2)*scale);
-  const aspect=getEffectiveAspect(W,H);
-
-  let Rx;
-  let Ry;
-
-  if(aspect>=availableW/availableH){
-    Rx=availableW/2;
-    Ry=Rx/aspect;
+  if(isIOS()){
+    hint.innerText="Смахните снизу вверх";
   }else{
-    Ry=availableH/2;
-    Rx=Ry*aspect;
+    hint.innerText="Кнопка Назад или Домой";
   }
 
-  return {Rx,Ry,R:Math.min(Rx,Ry),aspect};
-}
+  hint.style.opacity=1;
+  setTimeout(()=>hint.style.opacity=0,2000);
+};
 
+/* ===== DRAW ===== */
 function draw(){
-  resizeCanvasToScreen();
-
-  const t=getTimeParts();
-  const dir=reverse?-1:1;
-
-  const s=t.seconds+t.milliseconds/1000;
-  const m=t.minutes+s/60;
-  const h=(t.hours%12)+m/60;
-
   const W=canvas.width;
   const H=canvas.height;
-  const cX=W/2;
-  const cY=H/2;
+  const R=Math.min(W,H)/2*0.8;
 
-  const geom=calculateDialGeometry(W,H);
-  const Rx=geom.Rx;
-  const Ry=geom.Ry;
-  const R=geom.R;
-
-  if(autoDialAspect){
-    dialAspectValue.textContent=geom.aspect.toFixed(2)+" auto";
-  }
-
-  const srX=Rx*(radiusPercent/100);
-  const srY=Ry*(radiusPercent/100);
-
-  ctx.fillStyle=screenBgColor;
+  ctx.fillStyle="#0f172a";
   ctx.fillRect(0,0,W,H);
 
   ctx.save();
-  ctx.translate(cX,cY);
+  ctx.translate(W/2,H/2);
 
-  ctx.beginPath();
-  ctx.ellipse(0,0,Rx,Ry,0,0,Math.PI*2);
-  ctx.fillStyle=faceColor;
-  ctx.fill();
-
-  ctx.strokeStyle=accentColor;
-  ctx.lineWidth=R*.04;
-  ctx.stroke();
-
-  for(let i=0;i<60;i++){
-    const a=i*Math.PI/30;
-    const outerX=Math.sin(a)*Rx*.92;
-    const outerY=-Math.cos(a)*Ry*.92;
-    const innerX=Math.sin(a)*Rx*(i%5===0?.80:.86);
-    const innerY=-Math.cos(a)*Ry*(i%5===0?.80:.86);
-
-    ctx.beginPath();
-    ctx.moveTo(outerX,outerY);
-    ctx.lineTo(innerX,innerY);
-    ctx.lineWidth=i%5===0?R*.018:R*.008;
-    ctx.strokeStyle=i%5===0?accentColor:"#64748b";
-    ctx.stroke();
-  }
-
-  ctx.font=`bold ${symbolSize}px "${font}", Arial, sans-serif`;
-  ctx.textAlign="center";
-  ctx.textBaseline="middle";
-  ctx.fillStyle=applyGrayToColor(symbolColor,symbolGray);
-
-  for(let i=1;i<=12;i++){
+  for(let i=0;i<12;i++){
     const a=i*Math.PI/6;
-    ctx.fillText(symbols[i-1]||String(i),Math.sin(a)*srX,-Math.cos(a)*srY);
+
+    const x=Math.sin(a)*R;
+    const y=-Math.cos(a)*R;
+
+    if(svgImages.length===12){
+      const img=svgImages[i];
+      if(img.complete){
+        ctx.drawImage(img,x-30,y-30,60,60);
+      }
+    }else{
+      ctx.fillStyle="white";
+      ctx.font="30px Arial";
+      ctx.textAlign="center";
+      ctx.fillText(i+1,x,y);
+    }
   }
-
-  drawDigitalTime(t.hours,t.minutes,R);
-
-  drawHand(dir*h*Math.PI/6,R*.5,R*.035,hourHandColor);
-  drawHand(dir*m*Math.PI/30,R*.7,R*.024,minuteHandColor);
-
-  if(showSecondHand){
-    drawHand(dir*s*Math.PI/30,R*.8,R*.010,secondHandColor);
-  }
-
-  ctx.beginPath();
-  ctx.arc(0,0,R*.035,0,Math.PI*2);
-  ctx.fillStyle="white";
-  ctx.fill();
 
   ctx.restore();
   requestAnimationFrame(draw);
 }
 
-function collectCurrentSettings(){
-  return {
-    screenBgColor,
-    faceColor,
-    accentColor,
-    hourHandColor,
-    minuteHandColor,
-    secondHandColor,
-    symbolColor,
-    symbolGray,
-    reverse,
-    showSecondHand,
-    showDigital24,
-    clockSizeValue,
-    dialAspect,
-    autoDialAspect,
-    font,
-    symbolSize,
-    radiusPercent,
-    symbolsText:symbolsInput.value
-  };
-}
-
-function applySettings(settings){
-  screenBgColor=settings.screenBgColor || "#0f172a";
-  faceColor=settings.faceColor || "#111111";
-  accentColor=settings.accentColor || "#00ffcc";
-  hourHandColor=settings.hourHandColor || "#00ffcc";
-  minuteHandColor=settings.minuteHandColor || "#00ffcc";
-  secondHandColor=settings.secondHandColor || "#ff0000";
-  symbolColor=settings.symbolColor || "#ffffff";
-
-  symbolGray=Number(settings.symbolGray ?? 100);
-  reverse=Boolean(settings.reverse);
-  showSecondHand=Boolean(settings.showSecondHand ?? true);
-  showDigital24=Boolean(settings.showDigital24 ?? true);
-  clockSizeValue=Number(settings.clockSizeValue ?? 100);
-  dialAspect=Number(settings.dialAspect ?? 1.0);
-  autoDialAspect=Boolean(settings.autoDialAspect ?? true);
-
-  font=settings.font || "Arial";
-  symbolSize=Number(settings.symbolSize ?? 40);
-  radiusPercent=Number(settings.radiusPercent ?? 70);
-
-  const text=settings.symbolsText || "1 2 3 4 5 6 7 8 9 10 11 12";
-  symbols=text.trim().split(/\s+/).filter(Boolean);
-
-  syncControlsFromState();
-}
-
-function syncControlsFromState(){
-  clockSizeInput.value=clockSizeValue;
-  dialAspectInput.value=dialAspect;
-  dialAspectValue.textContent=dialAspect.toFixed(2);
-  autoDialAspectInput.checked=autoDialAspect;
-
-  Object.keys(colorMap).forEach(name=>{
-    const m=colorMap[name];
-    const value=getColorVar(name);
-    document.getElementById(m.picker).value=value;
-    document.getElementById(m.value).textContent=value;
-  });
-
-  symbolGrayInput.value=symbolGray;
-  reverseInput.checked=reverse;
-  showSecondsInput.checked=showSecondHand;
-  showDigital24Input.checked=showDigital24;
-
-  fontSelect.value=font;
-  symbolSizeInput.value=symbolSize;
-  symbolRadiusInput.value=radiusPercent;
-  symbolsInput.value=symbols.join(" ");
-
-  updatePreview();
-  updateHexPanel();
-}
-
-function loadModels(){
-  try{
-    const raw=localStorage.getItem(STORAGE_KEY);
-    if(!raw)return {};
-    const data=JSON.parse(raw);
-    if(data && typeof data==="object")return data;
-    return {};
-  }catch(e){return {};}
-}
-
-function saveModels(models){
-  localStorage.setItem(STORAGE_KEY,JSON.stringify(models));
-}
-
-const modelNameInput=document.getElementById("modelName");
-const modelStatus=document.getElementById("modelStatus");
-const modelList=document.getElementById("modelList");
-
-document.getElementById("saveModel").onclick=()=>{
-  const name=modelNameInput.value.trim();
-  if(!name){
-    modelStatus.textContent="Введите имя модели.";
-    return;
-  }
-
-  const models=loadModels();
-  models[name]=collectCurrentSettings();
-  saveModels(models);
-  modelStatus.textContent="Модель сохранена: "+name;
-  renderModelList();
-};
-
-function renderModelList(){
-  const models=loadModels();
-  const names=Object.keys(models).sort((a,b)=>a.localeCompare(b,"ru"));
-  modelList.innerHTML="";
-
-  if(!names.length){
-    modelStatus.textContent="Сохранённые модели появятся ниже.";
-    return;
-  }
-
-  names.forEach(name=>{
-    const row=document.createElement("div");
-    row.className="model-row";
-
-    const title=document.createElement("div");
-    title.className="model-name";
-    title.textContent=name;
-
-    const loadBtn=document.createElement("button");
-    loadBtn.className="load-model";
-    loadBtn.type="button";
-    loadBtn.textContent="Загрузить";
-    loadBtn.onclick=()=>{
-      const fresh=loadModels();
-      applySettings(fresh[name]);
-      modelNameInput.value=name;
-      modelStatus.textContent="Загружена модель: "+name;
-    };
-
-    const deleteBtn=document.createElement("button");
-    deleteBtn.className="delete-model";
-    deleteBtn.type="button";
-    deleteBtn.textContent="Удалить";
-    deleteBtn.onclick=()=>{
-      const fresh=loadModels();
-      delete fresh[name];
-      saveModels(fresh);
-      modelStatus.textContent="Удалена модель: "+name;
-      renderModelList();
-    };
-
-    row.appendChild(title);
-    row.appendChild(loadBtn);
-    row.appendChild(deleteBtn);
-    modelList.appendChild(row);
-  });
-}
-
-
-function makeStandaloneClockHTML(settings){
-  const safeSettings=JSON.stringify(settings);
-
-  return `<!DOCTYPE html>
-<html lang="ru">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Clock</title>
-<style>
-html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#000;font-family:Arial,sans-serif}
-canvas{width:100vw;height:100vh;display:block}
-</style>
-</head>
-<body>
-<canvas id="clock"></canvas>
-<script>
-const SETTINGS=${safeSettings};
-const canvas=document.getElementById("clock");
-const ctx=canvas.getContext("2d");
-function resizeCanvasToScreen(){const vv=window.visualViewport;const w=Math.floor(vv?vv.width:window.innerWidth);const h=Math.floor(vv?vv.height:window.innerHeight);if(canvas.width!==w||canvas.height!==h){canvas.width=w;canvas.height=h;}}
-function pad2(n){return String(n).padStart(2,"0");}
-function applyGrayToColor(hex,grayPercent){const g=Math.max(0,Math.min(100,Number(grayPercent)))/100;const clean=String(hex||"#ffffff").replace("#","");const r=parseInt(clean.slice(0,2),16);const gr=parseInt(clean.slice(2,4),16);const b=parseInt(clean.slice(4,6),16);return "rgb("+Math.round(r*g)+", "+Math.round(gr*g)+", "+Math.round(b*g)+")";}
-function getTimeParts(){const now=new Date();return {hours:now.getHours(),minutes:now.getMinutes(),seconds:now.getSeconds(),milliseconds:now.getMilliseconds()};}
-function getEffectiveAspect(W,H){if(SETTINGS.autoDialAspect){return Math.max(0.5,Math.min(2.0,W/H));}return Number(SETTINGS.dialAspect||1);}
-function calculateDialGeometry(W,H){const margin=Math.max(40,Math.min(W,H)*0.08);const scale=Number(SETTINGS.clockSizeValue||100)/100;const availableW=Math.max(100,(W-margin*2)*scale);const availableH=Math.max(100,(H-margin*2)*scale);const aspect=getEffectiveAspect(W,H);let Rx,Ry;if(aspect>=availableW/availableH){Rx=availableW/2;Ry=Rx/aspect;}else{Ry=availableH/2;Rx=Ry*aspect;}return {Rx:Rx,Ry:Ry,R:Math.min(Rx,Ry),aspect:aspect};}
-function drawHand(angle,length,width,color){ctx.save();ctx.rotate(angle);ctx.beginPath();ctx.moveTo(0,10);ctx.lineTo(0,-length);ctx.lineWidth=width;ctx.lineCap="round";ctx.strokeStyle=color;ctx.stroke();ctx.restore();}
-function drawDigitalTime(hours,minutes,R,font,symbolFill){if(!SETTINGS.showDigital24)return;ctx.save();ctx.font="bold "+Math.round(R*.20)+"px "+JSON.stringify(font)+", Arial, sans-serif";ctx.textAlign="center";ctx.textBaseline="middle";ctx.fillStyle=symbolFill;ctx.fillText(pad2(hours)+":"+pad2(minutes),0,R*.23);ctx.restore();}
-function draw(){resizeCanvasToScreen();const t=getTimeParts();const dir=SETTINGS.reverse?-1:1;const s=t.seconds+t.milliseconds/1000;const m=t.minutes+s/60;const h=(t.hours%12)+m/60;const W=canvas.width;const H=canvas.height;const cX=W/2;const cY=H/2;const geom=calculateDialGeometry(W,H);const Rx=geom.Rx;const Ry=geom.Ry;const R=geom.R;const radiusPercent=Number(SETTINGS.radiusPercent||70);const srX=Rx*(radiusPercent/100);const srY=Ry*(radiusPercent/100);ctx.fillStyle=SETTINGS.screenBgColor||"#0f172a";ctx.fillRect(0,0,W,H);ctx.save();ctx.translate(cX,cY);ctx.beginPath();ctx.ellipse(0,0,Rx,Ry,0,0,Math.PI*2);ctx.fillStyle=SETTINGS.faceColor||"#111111";ctx.fill();ctx.strokeStyle=SETTINGS.accentColor||"#00ffcc";ctx.lineWidth=R*.04;ctx.stroke();for(let i=0;i<60;i++){const a=i*Math.PI/30;const outerX=Math.sin(a)*Rx*.92;const outerY=-Math.cos(a)*Ry*.92;const innerX=Math.sin(a)*Rx*(i%5===0?.80:.86);const innerY=-Math.cos(a)*Ry*(i%5===0?.80:.86);ctx.beginPath();ctx.moveTo(outerX,outerY);ctx.lineTo(innerX,innerY);ctx.lineWidth=i%5===0?R*.018:R*.008;ctx.strokeStyle=i%5===0?(SETTINGS.accentColor||"#00ffcc"):"#64748b";ctx.stroke();}const font=SETTINGS.font||"Arial";const symbolSize=Number(SETTINGS.symbolSize||40);const symbolsText=SETTINGS.symbolsText||"1 2 3 4 5 6 7 8 9 10 11 12";const symbols=symbolsText.trim().split(/\\s+/).filter(Boolean);const symbolFill=applyGrayToColor(SETTINGS.symbolColor||"#ffffff",SETTINGS.symbolGray??100);ctx.font="bold "+symbolSize+"px "+JSON.stringify(font)+", Arial, sans-serif";ctx.textAlign="center";ctx.textBaseline="middle";ctx.fillStyle=symbolFill;for(let i=1;i<=12;i++){const a=i*Math.PI/6;ctx.fillText(symbols[i-1]||String(i),Math.sin(a)*srX,-Math.cos(a)*srY);}drawDigitalTime(t.hours,t.minutes,R,font,symbolFill);drawHand(dir*h*Math.PI/6,R*.5,R*.035,SETTINGS.hourHandColor||"#00ffcc");drawHand(dir*m*Math.PI/30,R*.7,R*.024,SETTINGS.minuteHandColor||"#00ffcc");if(SETTINGS.showSecondHand){drawHand(dir*s*Math.PI/30,R*.8,R*.010,SETTINGS.secondHandColor||"#ff0000");}ctx.beginPath();ctx.arc(0,0,R*.035,0,Math.PI*2);ctx.fillStyle="white";ctx.fill();ctx.restore();requestAnimationFrame(draw);}
 draw();
-<\/script>
-</body>
-</html>`;
+
+/* ===== PWA ===== */
+if("serviceWorker" in navigator){
+  navigator.serviceWorker.register("clock_service_worker.js");
 }
-
-function safeFileName(name){
-  return String(name||"clock_model").trim().replace(/[\\/:*?"<>|]+/g,"_").replace(/\s+/g,"_") || "clock_model";
-}
-
-document.getElementById("exportHtml").onclick=()=>{
-  const name=modelNameInput.value.trim()||"clock_model";
-  const settings=collectCurrentSettings();
-  const html=makeStandaloneClockHTML(settings);
-  const blob=new Blob([html],{type:"text/html;charset=utf-8"});
-  const url=URL.createObjectURL(blob);
-  const a=document.createElement("a");
-  a.href=url;
-  a.download=safeFileName(name)+".html";
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  URL.revokeObjectURL(url);
-  modelStatus.textContent="Экспортирован самостоятельный HTML-файл: "+safeFileName(name)+".html";
-};
-
-function encodeSettingsForLink(settings){
-  const json=JSON.stringify(settings);
-  return btoa(unescape(encodeURIComponent(json)));
-}
-
-function makeViewerLink(){
-  const encoded=encodeSettingsForLink(collectCurrentSettings());
-  return VIEWER_URL+"#clock="+encoded;
-}
-
-document.getElementById("exportLink").onclick=()=>{
-  const url=makeViewerLink();
-  navigator.clipboard.writeText(url).then(()=>{
-    modelStatus.textContent="GitHub-ссылка создана и скопирована.";
-    prompt("Ссылка на viewer с текущей моделью:",url);
-  }).catch(()=>{
-    modelStatus.textContent="GitHub-ссылка создана. Скопируйте её из окна.";
-    prompt("Ссылка на viewer с текущей моделью:",url);
-  });
-};
-
-function loadSettingsFromURL(){
-  if(!location.hash.startsWith("#clock="))return;
-  try{
-    const encoded=location.hash.replace("#clock=","");
-    const json=decodeURIComponent(escape(atob(encoded)));
-    const settings=JSON.parse(json);
-    applySettings(settings);
-    modelStatus.textContent="Модель загружена из ссылки.";
-  }catch(e){
-    console.log("Ошибка загрузки модели из ссылки:",e);
-  }
-}
-
-buildHexTable();
-updatePreview();
-updateHexPanel();
-renderModelList();
-loadSettingsFromURL();
-draw();
 </script>
+
 </body>
 </html>
