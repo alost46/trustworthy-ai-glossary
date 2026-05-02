@@ -1,7 +1,7 @@
 {
-  "name": "Clock Viewer Android",
+  "name": "Clock Viewer",
   "short_name": "Clock",
-  "start_url": "ClockViewerAndroid.html",
+  "start_url": "clock_viewer_android.html",
   "display": "standalone",
   "background_color": "#0f172a",
   "theme_color": "#0f172a",
