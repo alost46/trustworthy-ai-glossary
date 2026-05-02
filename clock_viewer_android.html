@@ -400,7 +400,10 @@ const colorMap={
 };
 
 document.getElementById("openSettings").onclick=()=>panel.classList.add("active");
-document.getElementById("closeSettings").onclick=()=>{panel.classList.remove("active");};
+document.getElementById("closeSettings").onclick=()=>{
+  panel.classList.remove("active");
+  setConstructorMode(false);
+};
 
 const clockSizeInput=document.getElementById("clockSize");
 const dialAspectInput=document.getElementById("dialAspect");
