@@ -1,4 +1,4 @@
-const CACHE_NAME = "clock-viewer-android-v2";
+const CACHE_NAME = "clock-viewer-android-v3";
 const FILES = [
   "./clock_viewer_android.html",
   "./clock_manifest.json",

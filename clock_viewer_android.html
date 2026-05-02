@@ -56,6 +56,8 @@ small{display:block;color:var(--muted);margin-top:4px;line-height:1.35}
 #exitBtn.ios-single-exit{left:50%;transform:translateX(-50%)}
 #exitBtn.two-button-left{left:calc(50% - 39px);transform:translateX(-50%)}
 #fullscreenBtn.two-button-right{left:calc(50% + 39px);transform:translateX(-50%)}
+
+#exitHint{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.72);color:#fff;padding:10px 16px;border-radius:12px;font-size:14px;line-height:1.35;opacity:0;pointer-events:none;transition:opacity .3s;z-index:40;box-shadow:0 6px 18px rgba(0,0,0,.28);max-width:calc(100vw - 32px);text-align:center}
 @media(max-width:520px){
   .color-grid,.hex-controls,.time-grid,.model-grid{grid-template-columns:1fr}
   .hex-cell{font-size:9px;padding:4px 0}
@@ -83,6 +85,7 @@ small{display:block;color:var(--muted);margin-top:4px;line-height:1.35}
 <button id="exitBtn" type="button" aria-label="Выход">✕</button>
 <button id="fullscreenBtn" type="button" aria-label="Полный экран">⛶</button>
 <button id="installBtn" type="button" aria-label="Установить">📱</button>
+<div id="exitHint" role="status" aria-live="polite"></div>
 
 <div class="settings-panel" id="settingsPanel">
   <div class="panel">
@@ -264,8 +267,25 @@ function toggleConstructorMode(){
   setConstructorMode(!constructorMode);
 }
 
+function showExitHint(){
+  const hint=document.getElementById("exitHint");
+  if(!hint)return;
+
+  if(isIOSDevice()){
+    hint.textContent="Чтобы выйти из часов: смахните экран снизу вверх.";
+  }else{
+    hint.textContent="Чтобы выйти из часов: используйте системную кнопку Назад или Домой.";
+  }
+
+  hint.style.opacity="1";
+  clearTimeout(showExitHint.timer);
+  showExitHint.timer=setTimeout(()=>{
+    hint.style.opacity="0";
+  },2800);
+}
+
 exitButton.onclick=()=>{
-  location.href="https://www.google.com/";
+  showExitHint();
 };
 
 async function toggleFullscreen(){
