@@ -3,8 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-<title>ClockViewerAndroid</title>
+<title>Clock Viewer Android</title>
 
 <link rel="manifest" href="clock_manifest.json">
 
@@ -12,29 +11,46 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
 <style>
+*{ box-sizing:border-box; }
+
 body{
   margin:0;
   background:#0f172a;
   overflow:hidden;
-  font-family:Arial;
+  font-family:Arial, sans-serif;
+  color:white;
 }
+
 canvas{
   width:100vw;
   height:100vh;
   display:block;
 }
 
-#exitBtn{
+#exitBtn,
+#gearBtn{
   position:fixed;
+  z-index:20;
+  border:none;
+  color:white;
+  background:rgba(0,0,0,.55);
+  border-radius:14px;
+  cursor:pointer;
+}
+
+#exitBtn{
   top:10px;
   left:50%;
   transform:translateX(-50%);
-  background:rgba(0,0,0,.5);
-  color:white;
-  border:none;
   padding:8px 14px;
-  border-radius:10px;
-  z-index:10;
+}
+
+#gearBtn{
+  right:16px;
+  bottom:16px;
+  width:54px;
+  height:54px;
+  font-size:28px;
 }
 
 #exitHint{
@@ -42,12 +58,96 @@ canvas{
   bottom:20px;
   left:50%;
   transform:translateX(-50%);
-  background:rgba(0,0,0,.7);
+  background:rgba(0,0,0,.75);
   color:white;
   padding:10px 14px;
   border-radius:12px;
   opacity:0;
-  transition:0.3s;
+  transition:.3s;
+  z-index:30;
+}
+
+#panel{
+  position:fixed;
+  top:50%;
+  left:50%;
+  transform:translate(-50%,-50%);
+  width:min(92vw,520px);
+  max-height:88vh;
+  overflow:auto;
+  background:#111827;
+  color:white;
+  border:1px solid #334155;
+  border-radius:18px;
+  padding:18px;
+  display:none;
+  z-index:100;
+  box-shadow:0 20px 70px rgba(0,0,0,.55);
+}
+
+#panel h2{
+  margin:0 0 12px 0;
+  font-size:22px;
+}
+
+label{
+  display:block;
+  margin-top:12px;
+  margin-bottom:5px;
+  font-size:14px;
+  color:#cbd5e1;
+}
+
+textarea,
+input,
+select{
+  width:100%;
+  border-radius:10px;
+  border:1px solid #475569;
+  background:#020617;
+  color:white;
+  padding:9px;
+  font-size:14px;
+}
+
+textarea{
+  height:120px;
+  resize:vertical;
+}
+
+.row{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:10px;
+}
+
+.buttons{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  margin-top:16px;
+}
+
+button.action{
+  border:none;
+  border-radius:10px;
+  padding:9px 12px;
+  background:#14b8a6;
+  color:#031b1a;
+  font-weight:bold;
+  cursor:pointer;
+}
+
+button.secondary{
+  background:#334155;
+  color:white;
+}
+
+.small{
+  color:#94a3b8;
+  font-size:12px;
+  line-height:1.35;
+  margin-top:8px;
 }
 </style>
 </head>
@@ -55,104 +155,837 @@ canvas{
 <body>
 
 <canvas id="clock"></canvas>
+
 <button id="exitBtn">✕</button>
+<button id="gearBtn">⚙</button>
 <div id="exitHint"></div>
 
+<div id="panel">
+  <h2>Конструктор часов</h2>
+
+  <label>Режим символов</label>
+  <select id="symbolMode">
+    <option value="text">Текстовые символы</option>
+    <option value="svg">SVG-набор</option>
+  </select>
+
+  <label>12 текстовых символов через запятую</label>
+  <textarea id="textSymbols">12,1,2,3,4,5,6,7,8,9,10,11</textarea>
+
+  <label>SVG-набор JSON</label>
+  <textarea id="svgSet" placeholder='{"symbols":["<svg ...>...</svg>", "... всего 12 SVG ..."]}'></textarea>
+
+  <div class="small">
+    Для SVG нужен JSON вида: {"symbols":[...12 SVG-строк...]}.
+    Правая кнопка мыши или ⚙ открывает эту панель.
+  </div>
+
+  <div class="row">
+    <div>
+      <label>Фон</label>
+      <input id="bgColor" type="color" value="#0f172a">
+    </div>
+    <div>
+      <label>Цвет цифр</label>
+      <input id="symbolColor" type="color" value="#ffffff">
+    </div>
+  </div>
+
+  <div class="row">
+    <div>
+      <label>Цвет обода</label>
+      <input id="rimColor" type="color" value="#14f5d0">
+    </div>
+    <div>
+      <label>Цвет минутных штрихов</label>
+      <input id="tickColor" type="color" value="#64748b">
+    </div>
+  </div>
+
+  <div class="row">
+    <div>
+      <label>Часовая стрелка</label>
+      <input id="hourColor" type="color" value="#ffffff">
+    </div>
+    <div>
+      <label>Минутная стрелка</label>
+      <input id="minuteColor" type="color" value="#ffffff">
+    </div>
+  </div>
+
+  <div class="row">
+    <div>
+      <label>Секундная стрелка</label>
+      <input id="secondColor" type="color" value="#14f5d0">
+    </div>
+    <div>
+      <label>Размер символов</label>
+      <input id="symbolSize" type="number" min="10" max="120" value="34">
+    </div>
+  </div>
+
+  <div class="buttons">
+    <button class="action" onclick="applySettings()">Применить</button>
+    <button class="action" onclick="copyLink()">Скопировать ссылку</button>
+    <button class="action secondary" onclick="closePanel()">Закрыть</button>
+  </div>
+</div>
+
 <script>
-const canvas=document.getElementById("clock");
-const ctx=canvas.getContext("2d");
+const canvas = document.getElementById("clock");
+const ctx = canvas.getContext("2d");
+
+let svgImages = [];
+
+let model = {
+  symbolMode: "text",
+  textSymbols: ["12","1","2","3","4","5","6","7","8","9","10","11"],
+  svgSet: "",
+  bgColor: "#0f172a",
+  symbolColor: "#ffffff",
+  rimColor: "#14f5d0",
+  tickColor: "#64748b",
+  hourColor: "#ffffff",
+  minuteColor: "#ffffff",
+  secondColor: "#14f5d0",
+  symbolSize: 34
+};
 
 function resize(){
-  canvas.width=window.innerWidth;
-  canvas.height=window.innerHeight;
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
 }
-window.onresize=resize;
+window.addEventListener("resize", resize);
 resize();
 
-/* ===== SVG ===== */
-let svgImages=[];
-
 function parseSvgSet(text){
-  try{
-    const obj=JSON.parse(text);
-    if(!obj.symbols || obj.symbols.length!==12) return;
+  svgImages = [];
+  if(!text.trim()) return false;
 
-    svgImages=obj.symbols.map(svg=>{
-      const img=new Image();
-      img.src="data:image/svg+xml;charset=utf-8,"+encodeURIComponent(svg);
+  try{
+    const obj = JSON.parse(text);
+    if(!obj.symbols || obj.symbols.length !== 12){
+      alert("SVG-набор должен содержать ровно 12 символов.");
+      return false;
+    }
+
+    svgImages = obj.symbols.map(svg => {
+      const img = new Image();
+      img.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
       return img;
     });
 
-  }catch(e){}
-}
-
-/* ===== URL model ===== */
-if(location.hash.startsWith("#clock=")){
-  const encoded=location.hash.replace("#clock=","");
-  const json=decodeURIComponent(escape(atob(encoded)));
-  const data=JSON.parse(json);
-
-  if(data.svgSet){
-    parseSvgSet(data.svgSet);
+    return true;
+  }catch(e){
+    alert("Ошибка JSON в SVG-наборе.");
+    return false;
   }
 }
 
-/* ===== EXIT ===== */
+function loadFromHash(){
+  if(!location.hash.startsWith("#clock=")) return;
+
+  try{
+    const encoded = location.hash.replace("#clock=", "");
+    const json = decodeURIComponent(escape(atob(encoded)));
+    const data = JSON.parse(json);
+    model = {...model, ...data};
+
+    if(model.svgSet){
+      parseSvgSet(model.svgSet);
+    }
+  }catch(e){
+    console.log("Cannot load model from hash", e);
+  }
+}
+
+function syncPanel(){
+  document.getElementById("symbolMode").value = model.symbolMode;
+  document.getElementById("textSymbols").value = model.textSymbols.join(",");
+  document.getElementById("svgSet").value = model.svgSet || "";
+
+  document.getElementById("bgColor").value = model.bgColor;
+  document.getElementById("symbolColor").value = model.symbolColor;
+  document.getElementById("rimColor").value = model.rimColor;
+  document.getElementById("tickColor").value = model.tickColor;
+  document.getElementById("hourColor").value = model.hourColor;
+  document.getElementById("minuteColor").value = model.minuteColor;
+  document.getElementById("secondColor").value = model.secondColor;
+  document.getElementById("symbolSize").value = model.symbolSize;
+}
+
+function applySettings(){
+  model.symbolMode = document.getElementById("symbolMode").value;
+
+  const parts = document.getElementById("textSymbols").value
+    .split(",")
+    .map(s => s.trim())
+    .filter(Boolean);
+
+  if(parts.length === 12){
+    model.textSymbols = parts;
+  }else{
+    alert("Нужно ровно 12 текстовых символов.");
+    return;
+  }
+
+  model.svgSet = document.getElementById("svgSet").value.trim();
+
+  model.bgColor = document.getElementById("bgColor").value;
+  model.symbolColor = document.getElementById("symbolColor").value;
+  model.rimColor = document.getElementById("rimColor").value;
+  model.tickColor = document.getElementById("tickColor").value;
+  model.hourColor = document.getElementById("hourColor").value;
+  model.minuteColor = document.getElementById("minuteColor").value;
+  model.secondColor = document.getElementById("secondColor").value;
+  model.symbolSize = Number(document.getElementById("symbolSize").value) || 34;
+
+  if(model.symbolMode === "svg"){
+    if(!parseSvgSet(model.svgSet)) return;
+  }
+
+  updateHash();
+}
+
+function updateHash(){
+  const json = JSON.stringify(model);
+  const encoded = btoa(unescape(encodeURIComponent(json)));
+  history.replaceState(null, "", "#clock=" + encoded);
+}
+
+async function copyLink(){
+  applySettings();
+  try{
+    await navigator.clipboard.writeText(location.href);
+    showHint("Ссылка скопирована");
+  }catch(e){
+    showHint("Не удалось скопировать ссылку");
+  }
+}
+
+function openPanel(){
+  syncPanel();
+  document.getElementById("panel").style.display = "block";
+}
+
+function closePanel(){
+  document.getElementById("panel").style.display = "none";
+}
+
+canvas.addEventListener("contextmenu", e => {
+  e.preventDefault();
+  openPanel();
+});
+
+document.getElementById("gearBtn").onclick = openPanel;
+
 function isIOS(){
   return /iPhone|iPad/.test(navigator.userAgent);
 }
 
-document.getElementById("exitBtn").onclick=()=>{
-  const hint=document.getElementById("exitHint");
+function showHint(text){
+  const hint = document.getElementById("exitHint");
+  hint.innerText = text;
+  hint.style.opacity = 1;
+  setTimeout(() => hint.style.opacity = 0, 2000);
+}
 
-  if(isIOS()){
-    hint.innerText="Смахните снизу вверх";
-  }else{
-    hint.innerText="Кнопка Назад или Домой";
-  }
-
-  hint.style.opacity=1;
-  setTimeout(()=>hint.style.opacity=0,2000);
+document.getElementById("exitBtn").onclick = () => {
+  showHint(isIOS() ? "Смахните снизу вверх" : "Кнопка Назад или Домой");
 };
 
-/* ===== DRAW ===== */
-function draw(){
-  const W=canvas.width;
-  const H=canvas.height;
-  const R=Math.min(W,H)/2*0.8;
+function drawHand(angle, length, width, color){
+  ctx.save();
+  ctx.rotate(angle);
+  ctx.beginPath();
+  ctx.lineWidth = width;
+  ctx.lineCap = "round";
+  ctx.strokeStyle = color;
+  ctx.moveTo(0, 16);
+  ctx.lineTo(0, -length);
+  ctx.stroke();
+  ctx.restore();
+}
 
-  ctx.fillStyle="#0f172a";
-  ctx.fillRect(0,0,W,H);
+function drawClock(){
+  const W = canvas.width;
+  const H = canvas.height;
+  const R = Math.min(W, H) * 0.40;
+
+  ctx.fillStyle = model.bgColor;
+  ctx.fillRect(0, 0, W, H);
 
   ctx.save();
-  ctx.translate(W/2,H/2);
+  ctx.translate(W / 2, H / 2);
 
-  for(let i=0;i<12;i++){
-    const a=i*Math.PI/6;
+  ctx.beginPath();
+  ctx.arc(0, 0, R, 0, Math.PI * 2);
+  ctx.fillStyle = "#0b0f14";
+  ctx.fill();
 
-    const x=Math.sin(a)*R;
-    const y=-Math.cos(a)*R;
+  ctx.beginPath();
+  ctx.arc(0, 0, R, 0, Math.PI * 2);
+  ctx.strokeStyle = model.rimColor;
+  ctx.lineWidth = Math.max(8, R * 0.035);
+  ctx.stroke();
 
-    if(svgImages.length===12){
-      const img=svgImages[i];
+  for(let i=0; i<60; i++){
+    const a = i * Math.PI / 30;
+    const major = i % 5 === 0;
+    const inner = major ? R * 0.82 : R * 0.88;
+    const outer = R * 0.94;
+
+    ctx.beginPath();
+    ctx.strokeStyle = major ? model.rimColor : model.tickColor;
+    ctx.lineWidth = major ? 6 : 3;
+    ctx.moveTo(Math.sin(a) * inner, -Math.cos(a) * inner);
+    ctx.lineTo(Math.sin(a) * outer, -Math.cos(a) * outer);
+    ctx.stroke();
+  }
+
+  for(let i=0; i<12; i++){
+    const a = i * Math.PI / 6;
+    const x = Math.sin(a) * R * 0.68;
+    const y = -Math.cos(a) * R * 0.68;
+
+    if(model.symbolMode === "svg" && svgImages.length === 12){
+      const img = svgImages[i];
+      const s = model.symbolSize * 1.8;
       if(img.complete){
-        ctx.drawImage(img,x-30,y-30,60,60);
+        ctx.drawImage(img, x - s/2, y - s/2, s, s);
       }
     }else{
-      ctx.fillStyle="white";
-      ctx.font="30px Arial";
-      ctx.textAlign="center";
-      ctx.fillText(i+1,x,y);
+      ctx.fillStyle = model.symbolColor;
+      ctx.font = "bold " + model.symbolSize + "px Arial";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(model.textSymbols[i], x, y);
     }
   }
 
-  ctx.restore();
-  requestAnimationFrame(draw);
+  const now = new Date();
+  const sec = now.getSeconds();
+  const min = now.getMinutes();
+  const hour = now.getHours() % 12;
+
+  const secA = sec * Math.PI / 30;
+  const minA = (min + sec / 60) * Math.PI / 30;
+  const hourA = (hour + min / 60) * Math.PI / 6;
+
+  drawHand(hourA, R * 0.45, Math.max(7, R * 0.035), model.hourColor);
+  drawHand(minA, R * 0.66, Math.max(5, R * 0.025), model.minuteColor);
+  drawHand(secA, R * 0.76, Math.max(2, R * 0.010), model.secondColor);
+
+  ctx.beginPath();
+  ctx.arc(0, 0, Math.max(7, R * 0.025), 0, Math.PI * 2);<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Clock Viewer Android</title>
+
+<link rel="manifest" href="clock_manifest.json">
+
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
+<style>
+*{ box-sizing:border-box; }
+
+body{
+  margin:0;
+  background:#0f172a;
+  overflow:hidden;
+  font-family:Arial, sans-serif;
+  color:white;
 }
 
-draw();
+canvas{
+  width:100vw;
+  height:100vh;
+  display:block;
+}
 
-/* ===== PWA ===== */
+#exitBtn,
+#gearBtn{
+  position:fixed;
+  z-index:20;
+  border:none;
+  color:white;
+  background:rgba(0,0,0,.55);
+  border-radius:14px;
+  cursor:pointer;
+}
+
+#exitBtn{
+  top:10px;
+  left:50%;
+  transform:translateX(-50%);
+  padding:8px 14px;
+}
+
+#gearBtn{
+  right:16px;
+  bottom:16px;
+  width:54px;
+  height:54px;
+  font-size:28px;
+}
+
+#exitHint{
+  position:fixed;
+  bottom:20px;
+  left:50%;
+  transform:translateX(-50%);
+  background:rgba(0,0,0,.75);
+  color:white;
+  padding:10px 14px;
+  border-radius:12px;
+  opacity:0;
+  transition:.3s;
+  z-index:30;
+}
+
+#panel{
+  position:fixed;
+  top:50%;
+  left:50%;
+  transform:translate(-50%,-50%);
+  width:min(92vw,520px);
+  max-height:88vh;
+  overflow:auto;
+  background:#111827;
+  color:white;
+  border:1px solid #334155;
+  border-radius:18px;
+  padding:18px;
+  display:none;
+  z-index:100;
+  box-shadow:0 20px 70px rgba(0,0,0,.55);
+}
+
+#panel h2{
+  margin:0 0 12px 0;
+  font-size:22px;
+}
+
+label{
+  display:block;
+  margin-top:12px;
+  margin-bottom:5px;
+  font-size:14px;
+  color:#cbd5e1;
+}
+
+textarea,
+input,
+select{
+  width:100%;
+  border-radius:10px;
+  border:1px solid #475569;
+  background:#020617;
+  color:white;
+  padding:9px;
+  font-size:14px;
+}
+
+textarea{
+  height:120px;
+  resize:vertical;
+}
+
+.row{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:10px;
+}
+
+.buttons{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  margin-top:16px;
+}
+
+button.action{
+  border:none;
+  border-radius:10px;
+  padding:9px 12px;
+  background:#14b8a6;
+  color:#031b1a;
+  font-weight:bold;
+  cursor:pointer;
+}
+
+button.secondary{
+  background:#334155;
+  color:white;
+}
+
+.small{
+  color:#94a3b8;
+  font-size:12px;
+  line-height:1.35;
+  margin-top:8px;
+}
+</style>
+</head>
+
+<body>
+
+<canvas id="clock"></canvas>
+
+<button id="exitBtn">✕</button>
+<button id="gearBtn">⚙</button>
+<div id="exitHint"></div>
+
+<div id="panel">
+  <h2>Конструктор часов</h2>
+
+  <label>Режим символов</label>
+  <select id="symbolMode">
+    <option value="text">Текстовые символы</option>
+    <option value="svg">SVG-набор</option>
+  </select>
+
+  <label>12 текстовых символов через запятую</label>
+  <textarea id="textSymbols">12,1,2,3,4,5,6,7,8,9,10,11</textarea>
+
+  <label>SVG-набор JSON</label>
+  <textarea id="svgSet" placeholder='{"symbols":["<svg ...>...</svg>", "... всего 12 SVG ..."]}'></textarea>
+
+  <div class="small">
+    Для SVG нужен JSON вида: {"symbols":[...12 SVG-строк...]}.
+    Правая кнопка мыши или ⚙ открывает эту панель.
+  </div>
+
+  <div class="row">
+    <div>
+      <label>Фон</label>
+      <input id="bgColor" type="color" value="#0f172a">
+    </div>
+    <div>
+      <label>Цвет цифр</label>
+      <input id="symbolColor" type="color" value="#ffffff">
+    </div>
+  </div>
+
+  <div class="row">
+    <div>
+      <label>Цвет обода</label>
+      <input id="rimColor" type="color" value="#14f5d0">
+    </div>
+    <div>
+      <label>Цвет минутных штрихов</label>
+      <input id="tickColor" type="color" value="#64748b">
+    </div>
+  </div>
+
+  <div class="row">
+    <div>
+      <label>Часовая стрелка</label>
+      <input id="hourColor" type="color" value="#ffffff">
+    </div>
+    <div>
+      <label>Минутная стрелка</label>
+      <input id="minuteColor" type="color" value="#ffffff">
+    </div>
+  </div>
+
+  <div class="row">
+    <div>
+      <label>Секундная стрелка</label>
+      <input id="secondColor" type="color" value="#14f5d0">
+    </div>
+    <div>
+      <label>Размер символов</label>
+      <input id="symbolSize" type="number" min="10" max="120" value="34">
+    </div>
+  </div>
+
+  <div class="buttons">
+    <button class="action" onclick="applySettings()">Применить</button>
+    <button class="action" onclick="copyLink()">Скопировать ссылку</button>
+    <button class="action secondary" onclick="closePanel()">Закрыть</button>
+  </div>
+</div>
+
+<script>
+const canvas = document.getElementById("clock");
+const ctx = canvas.getContext("2d");
+
+let svgImages = [];
+
+let model = {
+  symbolMode: "text",
+  textSymbols: ["12","1","2","3","4","5","6","7","8","9","10","11"],
+  svgSet: "",
+  bgColor: "#0f172a",
+  symbolColor: "#ffffff",
+  rimColor: "#14f5d0",
+  tickColor: "#64748b",
+  hourColor: "#ffffff",
+  minuteColor: "#ffffff",
+  secondColor: "#14f5d0",
+  symbolSize: 34
+};
+
+function resize(){
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+}
+window.addEventListener("resize", resize);
+resize();
+
+function parseSvgSet(text){
+  svgImages = [];
+  if(!text.trim()) return false;
+
+  try{
+    const obj = JSON.parse(text);
+    if(!obj.symbols || obj.symbols.length !== 12){
+      alert("SVG-набор должен содержать ровно 12 символов.");
+      return false;
+    }
+
+    svgImages = obj.symbols.map(svg => {
+      const img = new Image();
+      img.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
+      return img;
+    });
+
+    return true;
+  }catch(e){
+    alert("Ошибка JSON в SVG-наборе.");
+    return false;
+  }
+}
+
+function loadFromHash(){
+  if(!location.hash.startsWith("#clock=")) return;
+
+  try{
+    const encoded = location.hash.replace("#clock=", "");
+    const json = decodeURIComponent(escape(atob(encoded)));
+    const data = JSON.parse(json);
+    model = {...model, ...data};
+
+    if(model.svgSet){
+      parseSvgSet(model.svgSet);
+    }
+  }catch(e){
+    console.log("Cannot load model from hash", e);
+  }
+}
+
+function syncPanel(){
+  document.getElementById("symbolMode").value = model.symbolMode;
+  document.getElementById("textSymbols").value = model.textSymbols.join(",");
+  document.getElementById("svgSet").value = model.svgSet || "";
+
+  document.getElementById("bgColor").value = model.bgColor;
+  document.getElementById("symbolColor").value = model.symbolColor;
+  document.getElementById("rimColor").value = model.rimColor;
+  document.getElementById("tickColor").value = model.tickColor;
+  document.getElementById("hourColor").value = model.hourColor;
+  document.getElementById("minuteColor").value = model.minuteColor;
+  document.getElementById("secondColor").value = model.secondColor;
+  document.getElementById("symbolSize").value = model.symbolSize;
+}
+
+function applySettings(){
+  model.symbolMode = document.getElementById("symbolMode").value;
+
+  const parts = document.getElementById("textSymbols").value
+    .split(",")
+    .map(s => s.trim())
+    .filter(Boolean);
+
+  if(parts.length === 12){
+    model.textSymbols = parts;
+  }else{
+    alert("Нужно ровно 12 текстовых символов.");
+    return;
+  }
+
+  model.svgSet = document.getElementById("svgSet").value.trim();
+
+  model.bgColor = document.getElementById("bgColor").value;
+  model.symbolColor = document.getElementById("symbolColor").value;
+  model.rimColor = document.getElementById("rimColor").value;
+  model.tickColor = document.getElementById("tickColor").value;
+  model.hourColor = document.getElementById("hourColor").value;
+  model.minuteColor = document.getElementById("minuteColor").value;
+  model.secondColor = document.getElementById("secondColor").value;
+  model.symbolSize = Number(document.getElementById("symbolSize").value) || 34;
+
+  if(model.symbolMode === "svg"){
+    if(!parseSvgSet(model.svgSet)) return;
+  }
+
+  updateHash();
+}
+
+function updateHash(){
+  const json = JSON.stringify(model);
+  const encoded = btoa(unescape(encodeURIComponent(json)));
+  history.replaceState(null, "", "#clock=" + encoded);
+}
+
+async function copyLink(){
+  applySettings();
+  try{
+    await navigator.clipboard.writeText(location.href);
+    showHint("Ссылка скопирована");
+  }catch(e){
+    showHint("Не удалось скопировать ссылку");
+  }
+}
+
+function openPanel(){
+  syncPanel();
+  document.getElementById("panel").style.display = "block";
+}
+
+function closePanel(){
+  document.getElementById("panel").style.display = "none";
+}
+
+canvas.addEventListener("contextmenu", e => {
+  e.preventDefault();
+  openPanel();
+});
+
+document.getElementById("gearBtn").onclick = openPanel;
+
+function isIOS(){
+  return /iPhone|iPad/.test(navigator.userAgent);
+}
+
+function showHint(text){
+  const hint = document.getElementById("exitHint");
+  hint.innerText = text;
+  hint.style.opacity = 1;
+  setTimeout(() => hint.style.opacity = 0, 2000);
+}
+
+document.getElementById("exitBtn").onclick = () => {
+  showHint(isIOS() ? "Смахните снизу вверх" : "Кнопка Назад или Домой");
+};
+
+function drawHand(angle, length, width, color){
+  ctx.save();
+  ctx.rotate(angle);
+  ctx.beginPath();
+  ctx.lineWidth = width;
+  ctx.lineCap = "round";
+  ctx.strokeStyle = color;
+  ctx.moveTo(0, 16);
+  ctx.lineTo(0, -length);
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawClock(){
+  const W = canvas.width;
+  const H = canvas.height;
+  const R = Math.min(W, H) * 0.40;
+
+  ctx.fillStyle = model.bgColor;
+  ctx.fillRect(0, 0, W, H);
+
+  ctx.save();
+  ctx.translate(W / 2, H / 2);
+
+  ctx.beginPath();
+  ctx.arc(0, 0, R, 0, Math.PI * 2);
+  ctx.fillStyle = "#0b0f14";
+  ctx.fill();
+
+  ctx.beginPath();
+  ctx.arc(0, 0, R, 0, Math.PI * 2);
+  ctx.strokeStyle = model.rimColor;
+  ctx.lineWidth = Math.max(8, R * 0.035);
+  ctx.stroke();
+
+  for(let i=0; i<60; i++){
+    const a = i * Math.PI / 30;
+    const major = i % 5 === 0;
+    const inner = major ? R * 0.82 : R * 0.88;
+    const outer = R * 0.94;
+
+    ctx.beginPath();
+    ctx.strokeStyle = major ? model.rimColor : model.tickColor;
+    ctx.lineWidth = major ? 6 : 3;
+    ctx.moveTo(Math.sin(a) * inner, -Math.cos(a) * inner);
+    ctx.lineTo(Math.sin(a) * outer, -Math.cos(a) * outer);
+    ctx.stroke();
+  }
+
+  for(let i=0; i<12; i++){
+    const a = i * Math.PI / 6;
+    const x = Math.sin(a) * R * 0.68;
+    const y = -Math.cos(a) * R * 0.68;
+
+    if(model.symbolMode === "svg" && svgImages.length === 12){
+      const img = svgImages[i];
+      const s = model.symbolSize * 1.8;
+      if(img.complete){
+        ctx.drawImage(img, x - s/2, y - s/2, s, s);
+      }
+    }else{
+      ctx.fillStyle = model.symbolColor;
+      ctx.font = "bold " + model.symbolSize + "px Arial";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(model.textSymbols[i], x, y);
+    }
+  }
+
+  const now = new Date();
+  const sec = now.getSeconds();
+  const min = now.getMinutes();
+  const hour = now.getHours() % 12;
+
+  const secA = sec * Math.PI / 30;
+  const minA = (min + sec / 60) * Math.PI / 30;
+  const hourA = (hour + min / 60) * Math.PI / 6;
+
+  drawHand(hourA, R * 0.45, Math.max(7, R * 0.035), model.hourColor);
+  drawHand(minA, R * 0.66, Math.max(5, R * 0.025), model.minuteColor);
+  drawHand(secA, R * 0.76, Math.max(2, R * 0.010), model.secondColor);
+
+  ctx.beginPath();
+  ctx.arc(0, 0, Math.max(7, R * 0.025), 0, Math.PI * 2);
+  ctx.fillStyle = model.secondColor;
+  ctx.fill();
+
+  ctx.restore();
+
+  requestAnimationFrame(drawClock);
+}
+
+loadFromHash();
+drawClock();
+
+if("serviceWorker" in navigator){
+  navigator.serviceWorker.register("clock_service_worker.js");
+}
+</script>
+
+</body>
+</html>
+  ctx.fillStyle = model.secondColor;
+  ctx.fill();
+
+  ctx.restore();
+
+  requestAnimationFrame(drawClock);
+}
+
+loadFromHash();
+drawClock();
+
 if("serviceWorker" in navigator){
   navigator.serviceWorker.register("clock_service_worker.js");
 }
