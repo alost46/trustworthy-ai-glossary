@@ -3,6 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Clock">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>Clock Viewer</title>
 <style>
 :root{--bg:#0f172a;--text:#1f2937;--muted:#64748b}
@@ -45,8 +48,10 @@ small{display:block;color:var(--muted);margin-top:4px;line-height:1.35}
 .load-model{background:#2563eb}
 .delete-model{background:#dc2626}
 
-#exitBtn{position:fixed;top:10px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.42);color:#fff;border:none;border-radius:12px;padding:6px 14px;font-size:18px;line-height:1;cursor:pointer;z-index:20;backdrop-filter:blur(6px);box-shadow:0 4px 14px rgba(0,0,0,.25)}
-#exitBtn:hover{background:rgba(0,0,0,.62)}
+#exitBtn,#fullscreenBtn{position:fixed;top:10px;background:rgba(0,0,0,.42);color:#fff;border:none;border-radius:12px;padding:6px 14px;font-size:18px;line-height:1;cursor:pointer;z-index:20;backdrop-filter:blur(6px);box-shadow:0 4px 14px rgba(0,0,0,.25)}
+#exitBtn{left:calc(50% - 34px);transform:translateX(-50%)}
+#fullscreenBtn{left:calc(50% + 34px);transform:translateX(-50%)}
+#exitBtn:hover,#fullscreenBtn:hover{background:rgba(0,0,0,.62)}
 @media(max-width:520px){
   .color-grid,.hex-controls,.time-grid,.model-grid{grid-template-columns:1fr}
   .hex-cell{font-size:9px;padding:4px 0}
@@ -64,6 +69,7 @@ small{display:block;color:var(--muted);margin-top:4px;line-height:1.35}
 </div>
 
 <button id="exitBtn" type="button" aria-label="Выход">✕</button>
+<button id="fullscreenBtn" type="button" aria-label="Полный экран">⛶</button>
 
 <div class="settings-panel" id="settingsPanel">
   <div class="panel">
@@ -80,7 +86,6 @@ small{display:block;color:var(--muted);margin-top:4px;line-height:1.35}
           <label>&nbsp;</label>
           <button type="button" class="done-btn" id="saveModel">Сохранить модель</button>
           <button type="button" class="done-btn secondary-btn" id="exportHtml" style="margin-top:8px;">Export HTML</button>
-          <button type="button" class="done-btn secondary-btn" id="exportLink" style="margin-top:8px;">Export LINK</button>
         </div>
       </div>
       <small id="modelStatus">Сохранённые модели появятся ниже.</small>
@@ -219,6 +224,7 @@ const ctx=canvas.getContext("2d");
 const panel=document.getElementById("settingsPanel");
 const settingsButton=document.getElementById("openSettings");
 const exitButton=document.getElementById("exitBtn");
+const fullscreenButton=document.getElementById("fullscreenBtn");
 
 let constructorMode=false;
 let longPressTimer=null;
@@ -233,12 +239,37 @@ function toggleConstructorMode(){
 }
 
 exitButton.onclick=()=>{
-  if(history.length>1){
-    history.back();
-  }else{
-    location.href="about:blank";
-  }
+  location.href="https://www.google.com/";
 };
+
+async function toggleFullscreen(){
+  const doc=document;
+  const el=document.documentElement;
+
+  try{
+    if(doc.fullscreenElement || doc.webkitFullscreenElement){
+      if(doc.exitFullscreen){
+        await doc.exitFullscreen();
+      }else if(doc.webkitExitFullscreen){
+        doc.webkitExitFullscreen();
+      }
+    }else{
+      if(el.requestFullscreen){
+        await el.requestFullscreen();
+      }else if(el.webkitRequestFullscreen){
+        el.webkitRequestFullscreen();
+      }else{
+        console.log("Fullscreen API недоступен в этом браузере.");
+      }
+    }
+  }catch(e){
+    console.log("Fullscreen не включился:",e);
+  }
+
+  setTimeout(resizeCanvasToScreen,120);
+}
+
+fullscreenButton.onclick=toggleFullscreen;
 
 /* Телефон: долгое нажатие по циферблату включает/выключает режим конструктора */
 canvas.addEventListener("pointerdown",e=>{
@@ -280,7 +311,6 @@ let radiusPercent=70;
 let symbols=["1","2","3","4","5","6","7","8","9","10","11","12"];
 
 const STORAGE_KEY="clock_constructor_models_v6";
-const VIEWER_URL="https://alost46.github.io/trustworthy-ai-glossary/clock_viewer.html";
 
 const colorMap={
   screenBgColor:{picker:"screenBgColorPicker",value:"screenBgColorValue"},
@@ -858,28 +888,6 @@ document.getElementById("exportHtml").onclick=()=>{
   a.remove();
   URL.revokeObjectURL(url);
   modelStatus.textContent="Экспортирован самостоятельный HTML-файл: "+safeFileName(name)+".html";
-};
-
-
-function encodeSettingsForLink(settings){
-  const json=JSON.stringify(settings);
-  return btoa(unescape(encodeURIComponent(json)));
-}
-
-function makeViewerLink(){
-  const encoded=encodeSettingsForLink(collectCurrentSettings());
-  return VIEWER_URL+"#clock="+encoded;
-}
-
-document.getElementById("exportLink").onclick=()=>{
-  const url=makeViewerLink();
-  navigator.clipboard.writeText(url).then(()=>{
-    modelStatus.textContent="GitHub-ссылка создана и скопирована.";
-    prompt("Ссылка на viewer с текущей моделью:",url);
-  }).catch(()=>{
-    modelStatus.textContent="GitHub-ссылка создана. Скопируйте её из окна.";
-    prompt("Ссылка на viewer с текущей моделью:",url);
-  });
 };
 
 function loadSettingsFromURL(){
