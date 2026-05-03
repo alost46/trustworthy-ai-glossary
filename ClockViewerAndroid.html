@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Clock">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>Clock Viewer Android</title>
+<title>Clock Viewer</title>
 <style>
 :root{--bg:#0f172a;--text:#1f2937;--muted:#64748b}
 *{box-sizing:border-box}
@@ -202,7 +202,6 @@ small{display:block;color:var(--muted);margin-top:4px;line-height:1.35}
     <div class="control">
       <label>Символы часов</label>
       <input type="text" id="symbols" value="1 2 3 4 5 6 7 8 9 10 11 12">
-      <small>Можно вводить обычные символы или Unicode-коды вида U+2648.</small>
     </div>
 
     <div class="control">
@@ -605,26 +604,8 @@ symbolGrayInput.oninput=e=>symbolGray=Number(e.target.value);
 reverseInput.onchange=e=>reverse=e.target.checked;
 showSecondsInput.onchange=e=>showSecondHand=e.target.checked;
 
-function parseSymbolsInput(text){
-  return String(text || "")
-    .trim()
-    .split(/\s+/)
-    .filter(Boolean)
-    .map(item=>{
-      const m=item.match(/^U\+([0-9A-Fa-f]{4,6})$/);
-      if(m){
-        try{
-          return String.fromCodePoint(parseInt(m[1],16));
-        }catch(e){
-          return item;
-        }
-      }
-      return item;
-    });
-}
-
 symbolsInput.oninput=e=>{
-  const arr=parseSymbolsInput(e.target.value);
+  const arr=e.target.value.trim().split(/\s+/).filter(Boolean);
   if(arr.length){symbols=arr;updatePreview();}
 };
 
@@ -841,7 +822,7 @@ function applySettings(settings){
   radiusPercent=Number(settings.radiusPercent ?? 70);
 
   const text=settings.symbolsText || "1 2 3 4 5 6 7 8 9 10 11 12";
-  symbols=parseSymbolsInput(text);
+  symbols=text.trim().split(/\s+/).filter(Boolean);
 
   syncControlsFromState();
 }
@@ -982,7 +963,7 @@ function getEffectiveAspect(W,H){if(SETTINGS.autoDialAspect){return Math.max(0.5
 function calculateDialGeometry(W,H){const margin=Math.max(40,Math.min(W,H)*0.08);const scale=Number(SETTINGS.clockSizeValue||100)/100;const availableW=Math.max(100,(W-margin*2)*scale);const availableH=Math.max(100,(H-margin*2)*scale);const aspect=getEffectiveAspect(W,H);let Rx,Ry;if(aspect>=availableW/availableH){Rx=availableW/2;Ry=Rx/aspect;}else{Ry=availableH/2;Rx=Ry*aspect;}return {Rx:Rx,Ry:Ry,R:Math.min(Rx,Ry),aspect:aspect};}
 function drawHand(angle,length,width,color){ctx.save();ctx.rotate(angle);ctx.beginPath();ctx.moveTo(0,10);ctx.lineTo(0,-length);ctx.lineWidth=width;ctx.lineCap="round";ctx.strokeStyle=color;ctx.stroke();ctx.restore();}
 function drawDigitalTime(hours,minutes,R,font,symbolFill){if(!SETTINGS.showDigital24)return;ctx.save();ctx.font="bold "+Math.round(R*.20)+"px "+JSON.stringify(font)+", Arial, sans-serif";ctx.textAlign="center";ctx.textBaseline="middle";ctx.fillStyle=symbolFill;ctx.fillText(pad2(hours)+":"+pad2(minutes),0,R*.23);ctx.restore();}
-function draw(){resizeCanvasToScreen();const t=getTimeParts();const dir=SETTINGS.reverse?-1:1;const s=t.seconds+t.milliseconds/1000;const m=t.minutes+s/60;const h=(t.hours%12)+m/60;const W=canvas.width;const H=canvas.height;const cX=W/2;const cY=H/2;const geom=calculateDialGeometry(W,H);const Rx=geom.Rx;const Ry=geom.Ry;const R=geom.R;const radiusPercent=Number(SETTINGS.radiusPercent||70);const srX=Rx*(radiusPercent/100);const srY=Ry*(radiusPercent/100);ctx.fillStyle=SETTINGS.screenBgColor||"#0f172a";ctx.fillRect(0,0,W,H);ctx.save();ctx.translate(cX,cY);ctx.beginPath();ctx.ellipse(0,0,Rx,Ry,0,0,Math.PI*2);ctx.fillStyle=SETTINGS.faceColor||"#111111";ctx.fill();ctx.strokeStyle=SETTINGS.accentColor||"#00ffcc";ctx.lineWidth=R*.04;ctx.stroke();for(let i=0;i<60;i++){const a=i*Math.PI/30;const outerX=Math.sin(a)*Rx*.92;const outerY=-Math.cos(a)*Ry*.92;const innerX=Math.sin(a)*Rx*(i%5===0?.80:.86);const innerY=-Math.cos(a)*Ry*(i%5===0?.80:.86);ctx.beginPath();ctx.moveTo(outerX,outerY);ctx.lineTo(innerX,innerY);ctx.lineWidth=i%5===0?R*.018:R*.008;ctx.strokeStyle=i%5===0?(SETTINGS.accentColor||"#00ffcc"):"#64748b";ctx.stroke();}const font=SETTINGS.font||"Arial";const symbolSize=Number(SETTINGS.symbolSize||40);const symbolsText=SETTINGS.symbolsText||"1 2 3 4 5 6 7 8 9 10 11 12";function parseSymbolsText(text){return String(text||"").trim().split(/\\s+/).filter(Boolean).map(function(item){var m=item.match(/^U\\+([0-9A-Fa-f]{4,6})$/);if(m){try{return String.fromCodePoint(parseInt(m[1],16));}catch(e){return item;}}return item;});}const symbols=parseSymbolsText(symbolsText);const symbolFill=applyGrayToColor(SETTINGS.symbolColor||"#ffffff",SETTINGS.symbolGray??100);ctx.font="bold "+symbolSize+"px "+JSON.stringify(font)+", Arial, sans-serif";ctx.textAlign="center";ctx.textBaseline="middle";ctx.fillStyle=symbolFill;for(let i=1;i<=12;i++){const a=i*Math.PI/6;ctx.fillText(symbols[i-1]||String(i),Math.sin(a)*srX,-Math.cos(a)*srY);}drawDigitalTime(t.hours,t.minutes,R,font,symbolFill);drawHand(dir*h*Math.PI/6,R*.5,R*.035,SETTINGS.hourHandColor||"#00ffcc");drawHand(dir*m*Math.PI/30,R*.7,R*.024,SETTINGS.minuteHandColor||"#00ffcc");if(SETTINGS.showSecondHand){drawHand(dir*s*Math.PI/30,R*.8,R*.010,SETTINGS.secondHandColor||"#ff0000");}ctx.beginPath();ctx.arc(0,0,R*.035,0,Math.PI*2);ctx.fillStyle="white";ctx.fill();ctx.restore();requestAnimationFrame(draw);}
+function draw(){resizeCanvasToScreen();const t=getTimeParts();const dir=SETTINGS.reverse?-1:1;const s=t.seconds+t.milliseconds/1000;const m=t.minutes+s/60;const h=(t.hours%12)+m/60;const W=canvas.width;const H=canvas.height;const cX=W/2;const cY=H/2;const geom=calculateDialGeometry(W,H);const Rx=geom.Rx;const Ry=geom.Ry;const R=geom.R;const radiusPercent=Number(SETTINGS.radiusPercent||70);const srX=Rx*(radiusPercent/100);const srY=Ry*(radiusPercent/100);ctx.fillStyle=SETTINGS.screenBgColor||"#0f172a";ctx.fillRect(0,0,W,H);ctx.save();ctx.translate(cX,cY);ctx.beginPath();ctx.ellipse(0,0,Rx,Ry,0,0,Math.PI*2);ctx.fillStyle=SETTINGS.faceColor||"#111111";ctx.fill();ctx.strokeStyle=SETTINGS.accentColor||"#00ffcc";ctx.lineWidth=R*.04;ctx.stroke();for(let i=0;i<60;i++){const a=i*Math.PI/30;const outerX=Math.sin(a)*Rx*.92;const outerY=-Math.cos(a)*Ry*.92;const innerX=Math.sin(a)*Rx*(i%5===0?.80:.86);const innerY=-Math.cos(a)*Ry*(i%5===0?.80:.86);ctx.beginPath();ctx.moveTo(outerX,outerY);ctx.lineTo(innerX,innerY);ctx.lineWidth=i%5===0?R*.018:R*.008;ctx.strokeStyle=i%5===0?(SETTINGS.accentColor||"#00ffcc"):"#64748b";ctx.stroke();}const font=SETTINGS.font||"Arial";const symbolSize=Number(SETTINGS.symbolSize||40);const symbolsText=SETTINGS.symbolsText||"1 2 3 4 5 6 7 8 9 10 11 12";const symbols=symbolsText.trim().split(/\\s+/).filter(Boolean);const symbolFill=applyGrayToColor(SETTINGS.symbolColor||"#ffffff",SETTINGS.symbolGray??100);ctx.font="bold "+symbolSize+"px "+JSON.stringify(font)+", Arial, sans-serif";ctx.textAlign="center";ctx.textBaseline="middle";ctx.fillStyle=symbolFill;for(let i=1;i<=12;i++){const a=i*Math.PI/6;ctx.fillText(symbols[i-1]||String(i),Math.sin(a)*srX,-Math.cos(a)*srY);}drawDigitalTime(t.hours,t.minutes,R,font,symbolFill);drawHand(dir*h*Math.PI/6,R*.5,R*.035,SETTINGS.hourHandColor||"#00ffcc");drawHand(dir*m*Math.PI/30,R*.7,R*.024,SETTINGS.minuteHandColor||"#00ffcc");if(SETTINGS.showSecondHand){drawHand(dir*s*Math.PI/30,R*.8,R*.010,SETTINGS.secondHandColor||"#ff0000");}ctx.beginPath();ctx.arc(0,0,R*.035,0,Math.PI*2);ctx.fillStyle="white";ctx.fill();ctx.restore();requestAnimationFrame(draw);}
 draw();
 <\/script>
 </body>
