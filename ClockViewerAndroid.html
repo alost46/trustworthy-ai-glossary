@@ -48,11 +48,10 @@ small{display:block;color:var(--muted);margin-top:4px;line-height:1.35}
 .load-model{background:#2563eb}
 .delete-model{background:#dc2626}
 
-#exitBtn,#fullscreenBtn,#installBtn{position:fixed;top:10px;background:rgba(0,0,0,.42);color:#fff;border:none;border-radius:12px;padding:6px 14px;font-size:18px;line-height:1;cursor:pointer;z-index:20;backdrop-filter:blur(6px);box-shadow:0 4px 14px rgba(0,0,0,.25)}
+#exitBtn,#fullscreenBtn{position:fixed;top:10px;background:rgba(0,0,0,.42);color:#fff;border:none;border-radius:12px;padding:6px 14px;font-size:18px;line-height:1;cursor:pointer;z-index:20;backdrop-filter:blur(6px);box-shadow:0 4px 14px rgba(0,0,0,.25)}
 #exitBtn{left:calc(50% - 78px);transform:translateX(-50%)}
 #fullscreenBtn{left:50%;transform:translateX(-50%)}
-#installBtn{display:none;left:calc(50% + 78px);transform:translateX(-50%);font-size:16px;padding:7px 12px}
-#exitBtn:hover,#fullscreenBtn:hover,#installBtn:hover{background:rgba(0,0,0,.62)}
+#exitBtn:hover,#fullscreenBtn:hover{background:rgba(0,0,0,.62)}
 #exitBtn.ios-single-exit{left:50%;transform:translateX(-50%)}
 #exitBtn.two-button-left{left:calc(50% - 39px);transform:translateX(-50%)}
 #fullscreenBtn.two-button-right{left:calc(50% + 39px);transform:translateX(-50%)}
@@ -84,7 +83,6 @@ small{display:block;color:var(--muted);margin-top:4px;line-height:1.35}
 
 <button id="exitBtn" type="button" aria-label="Выход">✕</button>
 <button id="fullscreenBtn" type="button" aria-label="Полный экран">⛶</button>
-<button id="installBtn" type="button" aria-label="Установить">📱</button>
 <div id="exitHint" role="status" aria-live="polite"></div>
 
 <div class="settings-panel" id="settingsPanel">
@@ -242,7 +240,6 @@ const panel=document.getElementById("settingsPanel");
 const settingsButton=document.getElementById("openSettings");
 const exitButton=document.getElementById("exitBtn");
 const fullscreenButton=document.getElementById("fullscreenBtn");
-const installButton=document.getElementById("installBtn");
 
 function isIOSDevice(){
   return /iPad|iPhone|iPod/.test(navigator.userAgent) ||
@@ -251,7 +248,6 @@ function isIOSDevice(){
 
 if(isIOSDevice()){
   fullscreenButton.style.display="none";
-  installButton.style.display="none";
   exitButton.classList.add("ios-single-exit");
 }
 
@@ -284,7 +280,15 @@ function showExitHint(){
   },2800);
 }
 
+function isTouchLikeDevice(){
+  return ("ontouchstart" in window) || navigator.maxTouchPoints > 0;
+}
+
 exitButton.onclick=()=>{
+  if(!isTouchLikeDevice()){
+    window.location.href="https://www.google.com/";
+    return;
+  }
   showExitHint();
 };
 
@@ -319,47 +323,13 @@ if(!isIOSDevice()){
   fullscreenButton.onclick=toggleFullscreen;
 }
 
-let deferredInstallPrompt=null;
-
-function isStandaloneMode(){
-  return window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
-}
-
-function updateTopButtonsForInstall(){
+function arrangeTopButtons(){
   if(isIOSDevice())return;
-
-  const canInstall=Boolean(deferredInstallPrompt) && !isStandaloneMode();
-  installButton.style.display=canInstall ? "block" : "none";
-
-  exitButton.classList.toggle("two-button-left", !canInstall);
-  fullscreenButton.classList.toggle("two-button-right", !canInstall);
+  exitButton.classList.add("two-button-left");
+  fullscreenButton.classList.add("two-button-right");
 }
 
-window.addEventListener("beforeinstallprompt", e=>{
-  e.preventDefault();
-  deferredInstallPrompt=e;
-  updateTopButtonsForInstall();
-});
-
-installButton.onclick=async()=>{
-  if(!deferredInstallPrompt)return;
-
-  deferredInstallPrompt.prompt();
-  try{
-    await deferredInstallPrompt.userChoice;
-  }catch(e){}
-
-  deferredInstallPrompt=null;
-  updateTopButtonsForInstall();
-};
-
-window.addEventListener("appinstalled",()=>{
-  deferredInstallPrompt=null;
-  installButton.style.display="none";
-  updateTopButtonsForInstall();
-});
-
-updateTopButtonsForInstall();
+arrangeTopButtons();
 
 if("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost")){
   window.addEventListener("load",()=>{
