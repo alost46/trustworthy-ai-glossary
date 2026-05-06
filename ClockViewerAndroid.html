@@ -206,6 +206,15 @@ small{display:block;color:var(--muted);margin-top:4px;line-height:1.35}
     </div>
 
     <div class="control">
+      <label>Тип символов часов</label>
+      <select id="symbolRenderMode">
+        <option value="text">Текстовые символы</option>
+        <option value="svgRoman">SVG: римские цифры I–XII</option>
+      </select>
+      <small>Этап 1: встроенный SVG-набор римских цифр. Внешние SVG-наборы пока не подключаются.</small>
+    </div>
+
+    <div class="control">
       <label>Шрифт</label>
       <select id="fontSelect">
         <option>Arial</option>
@@ -378,7 +387,12 @@ let autoDialAspect=true;
 let font="Arial";
 let symbolSize=40;
 let radiusPercent=70;
+let symbolRenderMode="text";
 let symbols=["1","2","3","4","5","6","7","8","9","10","11","12"];
+
+const ROMAN_SVG_SYMBOLS=["I","II","III","IV","V","VI","VII","VIII","IX","X","XI","XII"];
+let svgSymbolImages=[];
+let svgSymbolCacheKey="";
 
 const STORAGE_KEY="clock_constructor_models_v6";
 const VIEWER_URL="https://alost46.github.io/trustworthy-ai-glossary/ClockViewerAndroid.html";
@@ -478,7 +492,10 @@ function setColorVar(name,value){
   if(name==="hourHandColor")hourHandColor=value;
   if(name==="minuteHandColor")minuteHandColor=value;
   if(name==="secondHandColor")secondHandColor=value;
-  if(name==="symbolColor")symbolColor=value;
+  if(name==="symbolColor"){
+    symbolColor=value;
+    svgSymbolCacheKey="";
+  }
 
   const m=colorMap[name];
   document.getElementById(m.picker).value=value;
@@ -571,12 +588,16 @@ const reverseInput=document.getElementById("reverseTime");
 const showSecondsInput=document.getElementById("showSeconds");
 const showDigital24Input=document.getElementById("showDigital24");
 const symbolsInput=document.getElementById("symbols");
+const symbolRenderModeInput=document.getElementById("symbolRenderMode");
 const fontSelect=document.getElementById("fontSelect");
 const symbolSizeInput=document.getElementById("symbolSize");
 const symbolRadiusInput=document.getElementById("symbolRadius");
 const preview=document.getElementById("preview");
 
-symbolGrayInput.oninput=e=>symbolGray=Number(e.target.value);
+symbolGrayInput.oninput=e=>{
+  symbolGray=Number(e.target.value);
+  svgSymbolCacheKey="";
+};
 reverseInput.onchange=e=>reverse=e.target.checked;
 showSecondsInput.onchange=e=>showSecondHand=e.target.checked;
 
@@ -585,14 +606,85 @@ symbolsInput.oninput=e=>{
   if(arr.length){symbols=arr;updatePreview();}
 };
 
-fontSelect.onchange=e=>{font=e.target.value;updatePreview();};
+symbolRenderModeInput.onchange=e=>{
+  symbolRenderMode=e.target.value;
+  svgSymbolCacheKey="";
+  updatePreview();
+};
+
+fontSelect.onchange=e=>{font=e.target.value;svgSymbolCacheKey="";updatePreview();};
 symbolSizeInput.oninput=e=>{symbolSize=Number(e.target.value);updatePreview();};
 symbolRadiusInput.oninput=e=>radiusPercent=Number(e.target.value);
 
 function updatePreview(){
   preview.style.fontFamily=`"${font}", Arial, sans-serif`;
   preview.style.fontSize=Math.max(18,Math.min(symbolSize,56))+"px";
-  preview.textContent=symbols.slice(0,12).join(" ")||"1 2 3 IV ★ א";
+
+  if(symbolRenderMode==="svgRoman"){
+    preview.textContent="SVG: "+ROMAN_SVG_SYMBOLS.join(" ");
+  }else{
+    preview.textContent=symbols.slice(0,12).join(" ")||"1 2 3 IV ★ א";
+  }
+}
+
+function escapeSvgText(value){
+  return String(value)
+    .replace(/&/g,"&amp;")
+    .replace(/</g,"&lt;")
+    .replace(/>/g,"&gt;")
+    .replace(/"/g,"&quot;");
+}
+
+function makeSvgSymbolDataUri(label,fill,fontFamily){
+  const safeLabel=escapeSvgText(label);
+  const safeFill=escapeSvgText(fill);
+  const safeFont=escapeSvgText(fontFamily || "Arial");
+  const fontSize=String(label).length>=4 ? 38 : String(label).length>=3 ? 46 : 56;
+  const svg=`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+    <text x="64" y="68" text-anchor="middle" dominant-baseline="middle" font-family="${safeFont}, Arial, sans-serif" font-size="${fontSize}" font-weight="700" fill="${safeFill}">${safeLabel}</text>
+  </svg>`;
+  return "data:image/svg+xml;charset=utf-8,"+encodeURIComponent(svg);
+}
+
+function ensureSvgSymbolImages(){
+  const fill=applyGrayToColor(symbolColor,symbolGray);
+  const key=[fill,font,ROMAN_SVG_SYMBOLS.join("|")].join("||");
+
+  if(svgSymbolCacheKey===key && svgSymbolImages.length===12)return;
+
+  svgSymbolCacheKey=key;
+  svgSymbolImages=ROMAN_SVG_SYMBOLS.map(label=>{
+    const img=new Image();
+    img.src=makeSvgSymbolDataUri(label,fill,font);
+    return img;
+  });
+}
+
+function drawClockSymbols(srX,srY){
+  if(symbolRenderMode==="svgRoman"){
+    ensureSvgSymbolImages();
+    const box=Math.max(18,symbolSize*1.75);
+
+    for(let i=1;i<=12;i++){
+      const a=i*Math.PI/6;
+      const x=Math.sin(a)*srX;
+      const y=-Math.cos(a)*srY;
+      const img=svgSymbolImages[i-1];
+
+      if(img && img.complete && img.naturalWidth>0){
+        ctx.drawImage(img,x-box/2,y-box/2,box,box);
+      }else{
+        ctx.fillText(ROMAN_SVG_SYMBOLS[i-1],x,y);
+      }
+    }
+
+    return;
+  }
+
+  for(let i=1;i<=12;i++){
+    const a=i*Math.PI/6;
+    ctx.fillText(symbols[i-1]||String(i),Math.sin(a)*srX,-Math.cos(a)*srY);
+  }
 }
 
 function applyGrayToColor(hex,grayPercent){
@@ -730,10 +822,7 @@ function draw(){
   ctx.textBaseline="middle";
   ctx.fillStyle=applyGrayToColor(symbolColor,symbolGray);
 
-  for(let i=1;i<=12;i++){
-    const a=i*Math.PI/6;
-    ctx.fillText(symbols[i-1]||String(i),Math.sin(a)*srX,-Math.cos(a)*srY);
-  }
+  drawClockSymbols(srX,srY);
 
   if(showDigitalClock){
     drawDigitalTime(t.hours,t.minutes,R);
@@ -775,6 +864,7 @@ function collectCurrentSettings(){
     font,
     symbolSize,
     radiusPercent,
+    symbolRenderMode,
     symbolsText:symbolsInput.value
   };
 }
@@ -800,6 +890,8 @@ function applySettings(settings){
   font=settings.font || "Arial";
   symbolSize=Number(settings.symbolSize ?? 40);
   radiusPercent=Number(settings.radiusPercent ?? 70);
+  symbolRenderMode=settings.symbolRenderMode || "text";
+  svgSymbolCacheKey="";
 
   const text=settings.symbolsText || "1 2 3 4 5 6 7 8 9 10 11 12";
   symbols=text.trim().split(/\s+/).filter(Boolean);
@@ -829,6 +921,7 @@ function syncControlsFromState(){
   fontSelect.value=font;
   symbolSizeInput.value=symbolSize;
   symbolRadiusInput.value=radiusPercent;
+  symbolRenderModeInput.value=symbolRenderMode;
   symbolsInput.value=symbols.join(" ");
 
   updatePreview();
@@ -939,12 +1032,18 @@ const ctx=canvas.getContext("2d");
 function resizeCanvasToScreen(){const vv=window.visualViewport;const w=Math.floor(vv?vv.width:window.innerWidth);const h=Math.floor(vv?vv.height:window.innerHeight);if(canvas.width!==w||canvas.height!==h){canvas.width=w;canvas.height=h;}}
 function pad2(n){return String(n).padStart(2,"0");}
 function applyGrayToColor(hex,grayPercent){const g=Math.max(0,Math.min(100,Number(grayPercent)))/100;const clean=String(hex||"#ffffff").replace("#","");const r=parseInt(clean.slice(0,2),16);const gr=parseInt(clean.slice(2,4),16);const b=parseInt(clean.slice(4,6),16);return "rgb("+Math.round(r*g)+", "+Math.round(gr*g)+", "+Math.round(b*g)+")";}
+const ROMAN_SVG_SYMBOLS=["I","II","III","IV","V","VI","VII","VIII","IX","X","XI","XII"];
+let svgSymbolImages=[];let svgSymbolCacheKey="";
+function escapeSvgText(value){return String(value).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/\"/g,"&quot;");}
+function makeSvgSymbolDataUri(label,fill,fontFamily){const safeLabel=escapeSvgText(label);const safeFill=escapeSvgText(fill);const safeFont=escapeSvgText(fontFamily||"Arial");const fontSize=String(label).length>=4?38:String(label).length>=3?46:56;const svg='<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128"><text x="64" y="68" text-anchor="middle" dominant-baseline="middle" font-family="'+safeFont+', Arial, sans-serif" font-size="'+fontSize+'" font-weight="700" fill="'+safeFill+'">'+safeLabel+'</text></svg>';return "data:image/svg+xml;charset=utf-8,"+encodeURIComponent(svg);}
+function ensureSvgSymbolImages(fill,font){const key=[fill,font,ROMAN_SVG_SYMBOLS.join("|")].join("||");if(svgSymbolCacheKey===key&&svgSymbolImages.length===12)return;svgSymbolCacheKey=key;svgSymbolImages=ROMAN_SVG_SYMBOLS.map(label=>{const img=new Image();img.src=makeSvgSymbolDataUri(label,fill,font);return img;});}
+function drawClockSymbols(ctx,srX,srY,symbols,symbolFill,font,symbolSize){if(SETTINGS.symbolRenderMode==="svgRoman"){ensureSvgSymbolImages(symbolFill,font);const box=Math.max(18,symbolSize*1.75);for(let i=1;i<=12;i++){const a=i*Math.PI/6;const x=Math.sin(a)*srX;const y=-Math.cos(a)*srY;const img=svgSymbolImages[i-1];if(img&&img.complete&&img.naturalWidth>0){ctx.drawImage(img,x-box/2,y-box/2,box,box);}else{ctx.fillText(ROMAN_SVG_SYMBOLS[i-1],x,y);}}return;}for(let i=1;i<=12;i++){const a=i*Math.PI/6;ctx.fillText(symbols[i-1]||String(i),Math.sin(a)*srX,-Math.cos(a)*srY);}}
 function getTimeParts(){const now=new Date();return {hours:now.getHours(),minutes:now.getMinutes(),seconds:now.getSeconds(),milliseconds:now.getMilliseconds()};}
 function getEffectiveAspect(W,H){if(SETTINGS.autoDialAspect){return Math.max(0.5,Math.min(2.0,W/H));}return Number(SETTINGS.dialAspect||1);}
 function calculateDialGeometry(W,H){const margin=Math.max(40,Math.min(W,H)*0.08);const scale=Number(SETTINGS.clockSizeValue||100)/100;const availableW=Math.max(100,(W-margin*2)*scale);const availableH=Math.max(100,(H-margin*2)*scale);const aspect=getEffectiveAspect(W,H);let Rx,Ry;if(aspect>=availableW/availableH){Rx=availableW/2;Ry=Rx/aspect;}else{Ry=availableH/2;Rx=Ry*aspect;}return {Rx:Rx,Ry:Ry,R:Math.min(Rx,Ry),aspect:aspect};}
 function drawHand(angle,length,width,color){ctx.save();ctx.rotate(angle);ctx.beginPath();ctx.moveTo(0,10);ctx.lineTo(0,-length);ctx.lineWidth=width;ctx.lineCap="round";ctx.strokeStyle=color;ctx.stroke();ctx.restore();}
 function drawDigitalTime(hours,minutes,R,font,symbolFill){if(!SETTINGS.showDigital24)return;ctx.save();ctx.font="bold "+Math.round(R*.20)+"px "+JSON.stringify(font)+", Arial, sans-serif";ctx.textAlign="center";ctx.textBaseline="middle";ctx.fillStyle=symbolFill;ctx.fillText(pad2(hours)+":"+pad2(minutes),0,R*.23);ctx.restore();}
-function draw(){resizeCanvasToScreen();const t=getTimeParts();const dir=SETTINGS.reverse?-1:1;const s=t.seconds+t.milliseconds/1000;const m=t.minutes+s/60;const h=(t.hours%12)+m/60;const W=canvas.width;const H=canvas.height;const cX=W/2;const cY=H/2;const geom=calculateDialGeometry(W,H);const Rx=geom.Rx;const Ry=geom.Ry;const R=geom.R;const radiusPercent=Number(SETTINGS.radiusPercent||70);const srX=Rx*(radiusPercent/100);const srY=Ry*(radiusPercent/100);ctx.fillStyle=SETTINGS.screenBgColor||"#0f172a";ctx.fillRect(0,0,W,H);ctx.save();ctx.translate(cX,cY);ctx.beginPath();ctx.ellipse(0,0,Rx,Ry,0,0,Math.PI*2);ctx.fillStyle=SETTINGS.faceColor||"#111111";ctx.fill();ctx.strokeStyle=SETTINGS.accentColor||"#00ffcc";ctx.lineWidth=R*.04;ctx.stroke();for(let i=0;i<60;i++){const a=i*Math.PI/30;const outerX=Math.sin(a)*Rx*.92;const outerY=-Math.cos(a)*Ry*.92;const innerX=Math.sin(a)*Rx*(i%5===0?.80:.86);const innerY=-Math.cos(a)*Ry*(i%5===0?.80:.86);ctx.beginPath();ctx.moveTo(outerX,outerY);ctx.lineTo(innerX,innerY);ctx.lineWidth=i%5===0?R*.018:R*.008;ctx.strokeStyle=i%5===0?(SETTINGS.accentColor||"#00ffcc"):"#64748b";ctx.stroke();}const font=SETTINGS.font||"Arial";const symbolSize=Number(SETTINGS.symbolSize||40);const symbolsText=SETTINGS.symbolsText||"1 2 3 4 5 6 7 8 9 10 11 12";const symbols=symbolsText.trim().split(/\\s+/).filter(Boolean);const symbolFill=applyGrayToColor(SETTINGS.symbolColor||"#ffffff",SETTINGS.symbolGray??100);ctx.font="bold "+symbolSize+"px "+JSON.stringify(font)+", Arial, sans-serif";ctx.textAlign="center";ctx.textBaseline="middle";ctx.fillStyle=symbolFill;for(let i=1;i<=12;i++){const a=i*Math.PI/6;ctx.fillText(symbols[i-1]||String(i),Math.sin(a)*srX,-Math.cos(a)*srY);}if(SETTINGS.showDigitalClock!==false){drawDigitalTime(t.hours,t.minutes,R,font,symbolFill);}drawHand(dir*h*Math.PI/6,R*.5,R*.035,SETTINGS.hourHandColor||"#00ffcc");drawHand(dir*m*Math.PI/30,R*.7,R*.024,SETTINGS.minuteHandColor||"#00ffcc");if(SETTINGS.showSecondHand){drawHand(dir*s*Math.PI/30,R*.8,R*.010,SETTINGS.secondHandColor||"#ff0000");}ctx.beginPath();ctx.arc(0,0,R*.035,0,Math.PI*2);ctx.fillStyle="white";ctx.fill();ctx.restore();requestAnimationFrame(draw);}
+function draw(){resizeCanvasToScreen();const t=getTimeParts();const dir=SETTINGS.reverse?-1:1;const s=t.seconds+t.milliseconds/1000;const m=t.minutes+s/60;const h=(t.hours%12)+m/60;const W=canvas.width;const H=canvas.height;const cX=W/2;const cY=H/2;const geom=calculateDialGeometry(W,H);const Rx=geom.Rx;const Ry=geom.Ry;const R=geom.R;const radiusPercent=Number(SETTINGS.radiusPercent||70);const srX=Rx*(radiusPercent/100);const srY=Ry*(radiusPercent/100);ctx.fillStyle=SETTINGS.screenBgColor||"#0f172a";ctx.fillRect(0,0,W,H);ctx.save();ctx.translate(cX,cY);ctx.beginPath();ctx.ellipse(0,0,Rx,Ry,0,0,Math.PI*2);ctx.fillStyle=SETTINGS.faceColor||"#111111";ctx.fill();ctx.strokeStyle=SETTINGS.accentColor||"#00ffcc";ctx.lineWidth=R*.04;ctx.stroke();for(let i=0;i<60;i++){const a=i*Math.PI/30;const outerX=Math.sin(a)*Rx*.92;const outerY=-Math.cos(a)*Ry*.92;const innerX=Math.sin(a)*Rx*(i%5===0?.80:.86);const innerY=-Math.cos(a)*Ry*(i%5===0?.80:.86);ctx.beginPath();ctx.moveTo(outerX,outerY);ctx.lineTo(innerX,innerY);ctx.lineWidth=i%5===0?R*.018:R*.008;ctx.strokeStyle=i%5===0?(SETTINGS.accentColor||"#00ffcc"):"#64748b";ctx.stroke();}const font=SETTINGS.font||"Arial";const symbolSize=Number(SETTINGS.symbolSize||40);const symbolsText=SETTINGS.symbolsText||"1 2 3 4 5 6 7 8 9 10 11 12";const symbols=symbolsText.trim().split(/\\s+/).filter(Boolean);const symbolFill=applyGrayToColor(SETTINGS.symbolColor||"#ffffff",SETTINGS.symbolGray??100);ctx.font="bold "+symbolSize+"px "+JSON.stringify(font)+", Arial, sans-serif";ctx.textAlign="center";ctx.textBaseline="middle";ctx.fillStyle=symbolFill;drawClockSymbols(ctx,srX,srY,symbols,symbolFill,font,symbolSize);if(SETTINGS.showDigitalClock!==false){drawDigitalTime(t.hours,t.minutes,R,font,symbolFill);}drawHand(dir*h*Math.PI/6,R*.5,R*.035,SETTINGS.hourHandColor||"#00ffcc");drawHand(dir*m*Math.PI/30,R*.7,R*.024,SETTINGS.minuteHandColor||"#00ffcc");if(SETTINGS.showSecondHand){drawHand(dir*s*Math.PI/30,R*.8,R*.010,SETTINGS.secondHandColor||"#ff0000");}ctx.beginPath();ctx.arc(0,0,R*.035,0,Math.PI*2);ctx.fillStyle="white";ctx.fill();ctx.restore();requestAnimationFrame(draw);}
 draw();
 <\/script>
 </body>
