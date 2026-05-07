@@ -1,0 +1,42 @@
+{
+  "schema": "ClockViewerModel/v1",
+  "id": "zodiac",
+  "name": "zodiac",
+  "exportedAt": "2026-05-07T14:27:27.490Z",
+  "settings": {
+    "screenBgColor": "#0f172a",
+    "faceColor": "#111111",
+    "accentColor": "#00ffcc",
+    "hourHandColor": "#00ffcc",
+    "minuteHandColor": "#00ffcc",
+    "secondHandColor": "#ff0000",
+    "symbolColor": "#ffffff",
+    "symbolGray": 100,
+    "reverse": false,
+    "showSecondHand": true,
+    "showDigitalClock": true,
+    "showDigital24": true,
+    "clockSizeValue": 100,
+    "dialAspect": 1,
+    "autoDialAspect": true,
+    "font": "Arial",
+    "symbolSize": 40,
+    "radiusPercent": 70,
+    "symbolRenderMode": "svgCustom",
+    "customSvgDataUris": [
+      "data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20128%20128%22%3E%0A%20%20%3Crect%20width%3D%22128%22%20height%3D%22128%22%20fill%3D%22none%22%2F%3E%0A%20%20%3Ctext%20x%3D%2264%22%20y%3D%2284%22%0A%20%20%20%20%20%20%20%20text-anchor%3D%22middle%22%0A%20%20%20%20%20%20%20%20font-size%3D%2288%22%0A%20%20%20%20%20%20%20%20font-family%3D%22Segoe%20UI%20Symbol%2C%20Noto%20Sans%20Symbols%2C%20Arial%20Unicode%20MS%22%0A%20%20%20%20%20%20%20%20fill%3D%22currentColor%22%3E%E2%99%91%3C%2Ftext%3E%0A%3C%2Fsvg%3E%0A",
+      "data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20128%20128%22%3E%0A%20%20%3Crect%20width%3D%22128%22%20height%3D%22128%22%20fill%3D%22none%22%2F%3E%0A%20%20%3Ctext%20x%3D%2264%22%20y%3D%2284%22%0A%20%20%20%20%20%20%20%20text-anchor%3D%22middle%22%0A%20%20%20%20%20%20%20%20font-size%3D%2288%22%0A%20%20%20%20%20%20%20%20font-family%3D%22Segoe%20UI%20Symbol%2C%20Noto%20Sans%20Symbols%2C%20Arial%20Unicode%20MS%22%0A%20%20%20%20%20%20%20%20fill%3D%22currentColor%22%3E%E2%99%92%3C%2Ftext%3E%0A%3C%2Fsvg%3E%0A",
+      "data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20128%20128%22%3E%0A%20%20%3Crect%20width%3D%22128%22%20height%3D%22128%22%20fill%3D%22none%22%2F%3E%0A%20%20%3Ctext%20x%3D%2264%22%20y%3D%2284%22%0A%20%20%20%20%20%20%20%20text-anchor%3D%22middle%22%0A%20%20%20%20%20%20%20%20font-size%3D%2288%22%0A%20%20%20%20%20%20%20%20font-family%3D%22Segoe%20UI%20Symbol%2C%20Noto%20Sans%20Symbols%2C%20Arial%20Unicode%20MS%22%0A%20%20%20%20%20%20%20%20fill%3D%22currentColor%22%3E%E2%99%93%3C%2Ftext%3E%0A%3C%2Fsvg%3E%0A",
+      "data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20128%20128%22%3E%0A%20%20%3Crect%20width%3D%22128%22%20height%3D%22128%22%20fill%3D%22none%22%2F%3E%0A%20%20%3Ctext%20x%3D%2264%22%20y%3D%2284%22%0A%20%20%20%20%20%20%20%20text-anchor%3D%22middle%22%0A%20%20%20%20%20%20%20%20font-size%3D%2288%22%0A%20%20%20%20%20%20%20%20font-family%3D%22Segoe%20UI%20Symbol%2C%20Noto%20Sans%20Symbols%2C%20Arial%20Unicode%20MS%22%0A%20%20%20%20%20%20%20%20fill%3D%22currentColor%22%3E%E2%99%88%3C%2Ftext%3E%0A%3C%2Fsvg%3E%0A",
+      "data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20128%20128%22%3E%0A%20%20%3Crect%20width%3D%22128%22%20height%3D%22128%22%20fill%3D%22none%22%2F%3E%0A%20%20%3Ctext%20x%3D%2264%22%20y%3D%2284%22%0A%20%20%20%20%20%20%20%20text-anchor%3D%22middle%22%0A%20%20%20%20%20%20%20%20font-size%3D%2288%22%0A%20%20%20%20%20%20%20%20font-family%3D%22Segoe%20UI%20Symbol%2C%20Noto%20Sans%20Symbols%2C%20Arial%20Unicode%20MS%22%0A%20%20%20%20%20%20%20%20fill%3D%22currentColor%22%3E%E2%99%89%3C%2Ftext%3E%0A%3C%2Fsvg%3E%0A",
+      "data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20128%20128%22%3E%0A%20%20%3Crect%20width%3D%22128%22%20height%3D%22128%22%20fill%3D%22none%22%2F%3E%0A%20%20%3Ctext%20x%3D%2264%22%20y%3D%2284%22%0A%20%20%20%20%20%20%20%20text-anchor%3D%22middle%22%0A%20%20%20%20%20%20%20%20font-size%3D%2288%22%0A%20%20%20%20%20%20%20%20font-family%3D%22Segoe%20UI%20Symbol%2C%20Noto%20Sans%20Symbols%2C%20Arial%20Unicode%20MS%22%0A%20%20%20%20%20%20%20%20fill%3D%22currentColor%22%3E%E2%99%8A%3C%2Ftext%3E%0A%3C%2Fsvg%3E%0A",
+      "data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20128%20128%22%3E%0A%20%20%3Crect%20width%3D%22128%22%20height%3D%22128%22%20fill%3D%22none%22%2F%3E%0A%20%20%3Ctext%20x%3D%2264%22%20y%3D%2284%22%0A%20%20%20%20%20%20%20%20text-anchor%3D%22middle%22%0A%20%20%20%20%20%20%20%20font-size%3D%2288%22%0A%20%20%20%20%20%20%20%20font-family%3D%22Segoe%20UI%20Symbol%2C%20Noto%20Sans%20Symbols%2C%20Arial%20Unicode%20MS%22%0A%20%20%20%20%20%20%20%20fill%3D%22currentColor%22%3E%E2%99%8B%3C%2Ftext%3E%0A%3C%2Fsvg%3E%0A",
+      "data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20128%20128%22%3E%0A%20%20%3Crect%20width%3D%22128%22%20height%3D%22128%22%20fill%3D%22none%22%2F%3E%0A%20%20%3Ctext%20x%3D%2264%22%20y%3D%2284%22%0A%20%20%20%20%20%20%20%20text-anchor%3D%22middle%22%0A%20%20%20%20%20%20%20%20font-size%3D%2288%22%0A%20%20%20%20%20%20%20%20font-family%3D%22Segoe%20UI%20Symbol%2C%20Noto%20Sans%20Symbols%2C%20Arial%20Unicode%20MS%22%0A%20%20%20%20%20%20%20%20fill%3D%22currentColor%22%3E%E2%99%8C%3C%2Ftext%3E%0A%3C%2Fsvg%3E%0A",
+      "data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20128%20128%22%3E%0A%20%20%3Crect%20width%3D%22128%22%20height%3D%22128%22%20fill%3D%22none%22%2F%3E%0A%20%20%3Ctext%20x%3D%2264%22%20y%3D%2284%22%0A%20%20%20%20%20%20%20%20text-anchor%3D%22middle%22%0A%20%20%20%20%20%20%20%20font-size%3D%2288%22%0A%20%20%20%20%20%20%20%20font-family%3D%22Segoe%20UI%20Symbol%2C%20Noto%20Sans%20Symbols%2C%20Arial%20Unicode%20MS%22%0A%20%20%20%20%20%20%20%20fill%3D%22currentColor%22%3E%E2%99%8D%3C%2Ftext%3E%0A%3C%2Fsvg%3E%0A",
+      "data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20128%20128%22%3E%0A%20%20%3Crect%20width%3D%22128%22%20height%3D%22128%22%20fill%3D%22none%22%2F%3E%0A%20%20%3Ctext%20x%3D%2264%22%20y%3D%2284%22%0A%20%20%20%20%20%20%20%20text-anchor%3D%22middle%22%0A%20%20%20%20%20%20%20%20font-size%3D%2288%22%0A%20%20%20%20%20%20%20%20font-family%3D%22Segoe%20UI%20Symbol%2C%20Noto%20Sans%20Symbols%2C%20Arial%20Unicode%20MS%22%0A%20%20%20%20%20%20%20%20fill%3D%22currentColor%22%3E%E2%99%8E%3C%2Ftext%3E%0A%3C%2Fsvg%3E%0A",
+      "data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20128%20128%22%3E%0A%20%20%3Crect%20width%3D%22128%22%20height%3D%22128%22%20fill%3D%22none%22%2F%3E%0A%20%20%3Ctext%20x%3D%2264%22%20y%3D%2284%22%0A%20%20%20%20%20%20%20%20text-anchor%3D%22middle%22%0A%20%20%20%20%20%20%20%20font-size%3D%2288%22%0A%20%20%20%20%20%20%20%20font-family%3D%22Segoe%20UI%20Symbol%2C%20Noto%20Sans%20Symbols%2C%20Arial%20Unicode%20MS%22%0A%20%20%20%20%20%20%20%20fill%3D%22currentColor%22%3E%E2%99%8F%3C%2Ftext%3E%0A%3C%2Fsvg%3E%0A",
+      "data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20128%20128%22%3E%0A%20%20%3Crect%20width%3D%22128%22%20height%3D%22128%22%20fill%3D%22none%22%2F%3E%0A%20%20%3Ctext%20x%3D%2264%22%20y%3D%2284%22%0A%20%20%20%20%20%20%20%20text-anchor%3D%22middle%22%0A%20%20%20%20%20%20%20%20font-size%3D%2288%22%0A%20%20%20%20%20%20%20%20font-family%3D%22Segoe%20UI%20Symbol%2C%20Noto%20Sans%20Symbols%2C%20Arial%20Unicode%20MS%22%0A%20%20%20%20%20%20%20%20fill%3D%22currentColor%22%3E%E2%99%90%3C%2Ftext%3E%0A%3C%2Fsvg%3E%0A"
+    ],
+    "symbolsText": "1 2 3 4 5 6 7 8 9 10 11 12"
+  }
+}
