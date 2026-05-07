@@ -503,6 +503,7 @@ function setColorVar(name,value){
   if(name==="symbolColor"){
     symbolColor=value;
     svgSymbolCacheKey="";
+    customSvgCacheKey="";
   }
 
   const m=colorMap[name];
@@ -608,6 +609,7 @@ const preview=document.getElementById("preview");
 symbolGrayInput.oninput=e=>{
   symbolGray=Number(e.target.value);
   svgSymbolCacheKey="";
+  customSvgCacheKey="";
 };
 reverseInput.onchange=e=>reverse=e.target.checked;
 showSecondsInput.onchange=e=>showSecondHand=e.target.checked;
@@ -725,14 +727,38 @@ function ensureSvgSymbolImages(){
   });
 }
 
+function decodeSvgDataUri(uri){
+  const text=String(uri||"");
+  const comma=text.indexOf(",");
+  if(comma<0)return text;
+
+  const body=text.slice(comma+1);
+  try{
+    return decodeURIComponent(body);
+  }catch(e){
+    try{return atob(body);}catch(err){return body;}
+  }
+}
+
+function makeColoredSvgDataUri(uri,fill){
+  let svg=decodeSvgDataUri(uri);
+
+  svg=svg
+    .replace(/currentColor/g,fill)
+    .replace(/currentcolor/g,fill);
+
+  return "data:image/svg+xml;charset=utf-8,"+encodeURIComponent(svg);
+}
+
 function ensureCustomSvgSymbolImages(){
-  const key=customSvgDataUris.join("||");
+  const fill=applyGrayToColor(symbolColor,symbolGray);
+  const key=[fill,customSvgDataUris.join("||")].join("||COLOR||");
   if(customSvgCacheKey===key && customSvgSymbolImages.length===customSvgDataUris.length)return;
 
   customSvgCacheKey=key;
   customSvgSymbolImages=customSvgDataUris.map(uri=>{
     const img=new Image();
-    img.src=uri;
+    img.src=makeColoredSvgDataUri(uri,fill);
     return img;
   });
 }
@@ -1138,8 +1164,10 @@ let svgSymbolImages=[];let svgSymbolCacheKey="";let customSvgSymbolImages=[];let
 function escapeSvgText(value){return String(value).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/\"/g,"&quot;");}
 function makeSvgSymbolDataUri(label,fill,fontFamily){const safeLabel=escapeSvgText(label);const safeFill=escapeSvgText(fill);const safeFont=escapeSvgText(fontFamily||"Arial");const fontSize=String(label).length>=4?38:String(label).length>=3?46:56;const svg='<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128"><text x="64" y="68" text-anchor="middle" dominant-baseline="middle" font-family="'+safeFont+', Arial, sans-serif" font-size="'+fontSize+'" font-weight="700" fill="'+safeFill+'">'+safeLabel+'</text></svg>';return "data:image/svg+xml;charset=utf-8,"+encodeURIComponent(svg);}
 function ensureSvgSymbolImages(fill,font){const key=[fill,font,ROMAN_SVG_SYMBOLS.join("|")].join("||");if(svgSymbolCacheKey===key&&svgSymbolImages.length===12)return;svgSymbolCacheKey=key;svgSymbolImages=ROMAN_SVG_SYMBOLS.map(label=>{const img=new Image();img.src=makeSvgSymbolDataUri(label,fill,font);return img;});}
-function ensureCustomSvgSymbolImages(){const data=Array.isArray(SETTINGS.customSvgDataUris)?SETTINGS.customSvgDataUris:[];const key=data.join("||");if(customSvgCacheKey===key&&customSvgSymbolImages.length===data.length)return;customSvgCacheKey=key;customSvgSymbolImages=data.map(uri=>{const img=new Image();img.src=uri;return img;});}
-function drawClockSymbols(ctx,srX,srY,symbols,symbolFill,font,symbolSize){if(SETTINGS.symbolRenderMode==="svgCustom"&&Array.isArray(SETTINGS.customSvgDataUris)&&SETTINGS.customSvgDataUris.length){ensureCustomSvgSymbolImages();const box=Math.max(18,symbolSize*1.75);for(let i=1;i<=12;i++){const a=i*Math.PI/6;const x=Math.sin(a)*srX;const y=-Math.cos(a)*srY;const img=customSvgSymbolImages[i-1];if(img&&img.complete&&img.naturalWidth>0){ctx.drawImage(img,x-box/2,y-box/2,box,box);}else{ctx.fillText(symbols[i-1]||String(i),x,y);}}return;}if(SETTINGS.symbolRenderMode==="svgRoman"){ensureSvgSymbolImages(symbolFill,font);const box=Math.max(18,symbolSize*1.75);for(let i=1;i<=12;i++){const a=i*Math.PI/6;const x=Math.sin(a)*srX;const y=-Math.cos(a)*srY;const img=svgSymbolImages[i-1];if(img&&img.complete&&img.naturalWidth>0){ctx.drawImage(img,x-box/2,y-box/2,box,box);}else{ctx.fillText(ROMAN_SVG_SYMBOLS[i-1],x,y);}}return;}for(let i=1;i<=12;i++){const a=i*Math.PI/6;ctx.fillText(symbols[i-1]||String(i),Math.sin(a)*srX,-Math.cos(a)*srY);}}
+function decodeSvgDataUri(uri){const text=String(uri||"");const comma=text.indexOf(",");if(comma<0)return text;const body=text.slice(comma+1);try{return decodeURIComponent(body);}catch(e){try{return atob(body);}catch(err){return body;}}}
+function makeColoredSvgDataUri(uri,fill){let svg=decodeSvgDataUri(uri);svg=svg.replace(/currentColor/g,fill).replace(/currentcolor/g,fill);return "data:image/svg+xml;charset=utf-8,"+encodeURIComponent(svg);}
+function ensureCustomSvgSymbolImages(symbolFill){const data=Array.isArray(SETTINGS.customSvgDataUris)?SETTINGS.customSvgDataUris:[];const key=[symbolFill,data.join("||")].join("||COLOR||");if(customSvgCacheKey===key&&customSvgSymbolImages.length===data.length)return;customSvgCacheKey=key;customSvgSymbolImages=data.map(uri=>{const img=new Image();img.src=makeColoredSvgDataUri(uri,symbolFill);return img;});}
+function drawClockSymbols(ctx,srX,srY,symbols,symbolFill,font,symbolSize){if(SETTINGS.symbolRenderMode==="svgCustom"&&Array.isArray(SETTINGS.customSvgDataUris)&&SETTINGS.customSvgDataUris.length){ensureCustomSvgSymbolImages(symbolFill);const box=Math.max(18,symbolSize*1.75);for(let i=1;i<=12;i++){const a=i*Math.PI/6;const x=Math.sin(a)*srX;const y=-Math.cos(a)*srY;const img=customSvgSymbolImages[i-1];if(img&&img.complete&&img.naturalWidth>0){ctx.drawImage(img,x-box/2,y-box/2,box,box);}else{ctx.fillText(symbols[i-1]||String(i),x,y);}}return;}if(SETTINGS.symbolRenderMode==="svgRoman"){ensureSvgSymbolImages(symbolFill,font);const box=Math.max(18,symbolSize*1.75);for(let i=1;i<=12;i++){const a=i*Math.PI/6;const x=Math.sin(a)*srX;const y=-Math.cos(a)*srY;const img=svgSymbolImages[i-1];if(img&&img.complete&&img.naturalWidth>0){ctx.drawImage(img,x-box/2,y-box/2,box,box);}else{ctx.fillText(ROMAN_SVG_SYMBOLS[i-1],x,y);}}return;}for(let i=1;i<=12;i++){const a=i*Math.PI/6;ctx.fillText(symbols[i-1]||String(i),Math.sin(a)*srX,-Math.cos(a)*srY);}}
 function getTimeParts(){const now=new Date();return {hours:now.getHours(),minutes:now.getMinutes(),seconds:now.getSeconds(),milliseconds:now.getMilliseconds()};}
 function getEffectiveAspect(W,H){if(SETTINGS.autoDialAspect){return Math.max(0.5,Math.min(2.0,W/H));}return Number(SETTINGS.dialAspect||1);}
 function calculateDialGeometry(W,H){const margin=Math.max(40,Math.min(W,H)*0.08);const scale=Number(SETTINGS.clockSizeValue||100)/100;const availableW=Math.max(100,(W-margin*2)*scale);const availableH=Math.max(100,(H-margin*2)*scale);const aspect=getEffectiveAspect(W,H);let Rx,Ry;if(aspect>=availableW/availableH){Rx=availableW/2;Ry=Rx/aspect;}else{Ry=availableH/2;Rx=Ry*aspect;}return {Rx:Rx,Ry:Ry,R:Math.min(Rx,Ry),aspect:aspect};}
