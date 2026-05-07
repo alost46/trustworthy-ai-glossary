@@ -297,11 +297,7 @@ function isTouchLikeDevice(){
 }
 
 exitButton.onclick=()=>{
-  if(!isTouchLikeDevice()){
-    window.location.href="https://www.google.com/";
-    return;
-  }
-  showExitHint();
+  window.location.href="https://www.google.com/";
 };
 
 async function toggleFullscreen(){
