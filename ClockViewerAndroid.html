@@ -101,6 +101,7 @@ small{display:block;color:var(--muted);margin-top:4px;line-height:1.35}
           <button type="button" class="done-btn" id="saveModel">Сохранить модель</button>
           <button type="button" class="done-btn secondary-btn" id="exportHtml" style="margin-top:8px;">Export HTML</button>
           <button type="button" class="done-btn secondary-btn" id="exportLink" style="margin-top:8px;background:#059669;">Export LINK</button>
+          <button type="button" class="done-btn secondary-btn" id="exportModelJson" style="margin-top:8px;background:#7c3aed;">Export MODEL JSON</button>
         </div>
       </div>
       <small id="modelStatus">Сохранённые модели появятся ниже.</small>
@@ -1210,6 +1211,79 @@ function makeViewerLink(){
   return VIEWER_URL+"#clock="+encoded;
 }
 
+function normalizeModelId(name){
+  return String(name||"")
+    .trim()
+    .toLowerCase()
+    .replace(/\.json$/i,"")
+    .replace(/[^a-z0-9_-]+/g,"-")
+    .replace(/^-+|-+$/g,"") || "clock-model";
+}
+
+function makeModelJsonObject(){
+  const rawName=modelNameInput.value.trim() || "clock-model";
+  const id=normalizeModelId(rawName);
+
+  return {
+    schema:"ClockViewerModel/v1",
+    id:id,
+    name:rawName,
+    exportedAt:new Date().toISOString(),
+    settings:collectCurrentSettings()
+  };
+}
+
+document.getElementById("exportModelJson").onclick=()=>{
+  const model=makeModelJsonObject();
+  const json=JSON.stringify(model,null,2);
+  const blob=new Blob([json],{type:"application/json;charset=utf-8"});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement("a");
+  a.href=url;
+  a.download=model.id+".json";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+  modelStatus.textContent="Экспортирован MODEL JSON: "+model.id+".json";
+};
+
+async function loadModelFromGitHubQuery(){
+  const params=new URLSearchParams(location.search);
+  const modelParam=params.get("model");
+  if(!modelParam)return false;
+
+  const modelId=normalizeModelId(modelParam);
+  const modelUrl="models/"+modelId+".json?v="+Date.now();
+
+  try{
+    modelStatus.textContent="Загружаю модель из GitHub: "+modelId+"...";
+    const response=await fetch(modelUrl,{cache:"no-store"});
+
+    if(!response.ok){
+      modelStatus.textContent="Не удалось загрузить модель: "+modelUrl;
+      console.log("Model fetch failed:",response.status,response.statusText,modelUrl);
+      return false;
+    }
+
+    const data=await response.json();
+    const settings=data.settings || data;
+
+    if(settings.customSvgDataUris && Array.isArray(settings.customSvgDataUris) && settings.customSvgDataUris.length){
+      settings.symbolRenderMode="svgCustom";
+    }
+
+    applySettings(settings);
+    modelNameInput.value=data.name || data.id || modelId;
+    modelStatus.textContent="Модель загружена из GitHub: "+(data.name || modelId);
+    return true;
+  }catch(e){
+    modelStatus.textContent="Ошибка загрузки модели из GitHub: "+modelId;
+    console.log("Ошибка загрузки модели:",e);
+    return false;
+  }
+}
+
 document.getElementById("exportLink").onclick=()=>{
   const url=makeViewerLink();
   navigator.clipboard.writeText(url).then(()=>{
@@ -1222,24 +1296,35 @@ document.getElementById("exportLink").onclick=()=>{
 };
 
 function loadSettingsFromURL(){
-  if(!location.hash.startsWith("#clock="))return;
+  if(!location.hash.startsWith("#clock="))return false;
   try{
     const encoded=location.hash.replace("#clock=","");
     const json=decodeURIComponent(escape(atob(encoded)));
     const settings=JSON.parse(json);
     applySettings(settings);
     modelStatus.textContent="Модель загружена из ссылки.";
+    return true;
   }catch(e){
     console.log("Ошибка загрузки модели из ссылки:",e);
+    return false;
   }
 }
 
-buildHexTable();
-updatePreview();
-updateHexPanel();
-renderModelList();
-loadSettingsFromURL();
-draw();
+async function initClockApp(){
+  buildHexTable();
+  updatePreview();
+  updateHexPanel();
+  renderModelList();
+
+  const loadedFromHash=loadSettingsFromURL();
+  if(!loadedFromHash){
+    await loadModelFromGitHubQuery();
+  }
+
+  draw();
+}
+
+initClockApp();
 </script>
 </body>
 </html>
