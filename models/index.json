@@ -1,0 +1,32 @@
+[
+  {
+    "id": "ai",
+    "title": "AI Models Clock",
+    "description": "Цветные SVG-символы моделей искусственного интеллекта"
+  },
+  {
+    "id": "auto",
+    "title": "Auto Clock",
+    "description": "Автомобильная тема"
+  },
+  {
+    "id": "circle",
+    "title": "Circle Clock",
+    "description": "Классический круглый циферблат"
+  },
+  {
+    "id": "roma",
+    "title": "Roman Numerals Clock",
+    "description": "Римские цифры"
+  },
+  {
+    "id": "zodiac",
+    "title": "Zodiac Clock",
+    "description": "Символы зодиака"
+  },
+  {
+    "id": "zodiacv",
+    "title": "Zodiac Variant Clock",
+    "description": "Альтернативный вариант зодиака"
+  }
+]
