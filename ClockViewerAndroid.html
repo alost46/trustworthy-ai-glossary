@@ -47,6 +47,10 @@ small{display:block;color:var(--muted);margin-top:4px;line-height:1.35}
 .model-row button{padding:7px 10px;border:none;border-radius:8px;color:#fff;cursor:pointer;font-weight:bold}
 .load-model{background:#2563eb}
 .delete-model{background:#dc2626}
+.svg-preview-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:6px;margin-top:10px}
+.svg-preview-cell{height:42px;border:1px solid #cbd5e1;border-radius:8px;background:#fff;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.svg-preview-cell img{max-width:82%;max-height:82%;display:block}
+.svg-preview-cell.empty{color:#94a3b8;font-size:12px;font-family:Consolas,monospace}
 
 #exitBtn,#fullscreenBtn{position:fixed;top:10px;background:rgba(0,0,0,.42);color:#fff;border:none;border-radius:12px;padding:6px 14px;font-size:18px;line-height:1;cursor:pointer;z-index:20;backdrop-filter:blur(6px);box-shadow:0 4px 14px rgba(0,0,0,.25)}
 #exitBtn{left:calc(50% - 78px);transform:translateX(-50%)}
@@ -61,6 +65,7 @@ small{display:block;color:var(--muted);margin-top:4px;line-height:1.35}
   .color-grid,.hex-controls,.time-grid,.model-grid{grid-template-columns:1fr}
   .hex-cell{font-size:9px;padding:4px 0}
   .model-row{grid-template-columns:1fr}
+  .svg-preview-grid{grid-template-columns:repeat(4,1fr)}
 }
 </style>
 
@@ -220,6 +225,7 @@ small{display:block;color:var(--muted);margin-top:4px;line-height:1.35}
       <label>Пользовательские SVG-символы часов</label>
       <input type="file" id="customSvgFiles" accept=".svg,image/svg+xml" multiple>
       <small id="customSvgStatus">Выберите 12 SVG-файлов. Файлы будут отсортированы по имени: 01.svg, 02.svg ... 12.svg.</small>
+      <div class="svg-preview-grid" id="customSvgPreview"></div>
       <button type="button" class="done-btn secondary-btn" id="clearCustomSvg" style="margin-top:8px;">Очистить SVG-набор</button>
     </div>
 
@@ -246,6 +252,12 @@ small{display:block;color:var(--muted);margin-top:4px;line-height:1.35}
     </div>
 
     <div class="control">
+      <label>Масштаб SVG-символов: <span id="svgSymbolScaleValue">100%</span></label>
+      <input type="range" id="svgSymbolScale" min="30" max="150" value="100">
+      <small>Работает для SVG-режимов: римские цифры и пользовательский набор.</small>
+    </div>
+
+    <div class="control">
       <label>Радиус символов</label>
       <input type="range" id="symbolRadius" min="30" max="90" value="70">
     </div>
@@ -268,8 +280,9 @@ function isIOSDevice(){
 }
 
 if(isIOSDevice()){
-  fullscreenButton.style.display="none";
-  exitButton.classList.add("ios-single-exit");
+  /* На iPhone оставляем кнопку полного экрана видимой.
+     В обычном Safari Fullscreen API может быть недоступен, но в PWA/браузерах,
+     где он поддерживается, кнопка сможет сработать. */
 }
 
 let constructorMode=false;
@@ -336,12 +349,9 @@ async function toggleFullscreen(){
   setTimeout(resizeCanvasToScreen,120);
 }
 
-if(!isIOSDevice()){
-  fullscreenButton.onclick=toggleFullscreen;
-}
+fullscreenButton.onclick=toggleFullscreen;
 
 function arrangeTopButtons(){
-  if(isIOSDevice())return;
   exitButton.classList.add("two-button-left");
   fullscreenButton.classList.add("two-button-right");
 }
@@ -391,6 +401,7 @@ let autoDialAspect=true;
 
 let font="Arial";
 let symbolSize=40;
+let svgSymbolScalePercent=100;
 let radiusPercent=70;
 let symbolRenderMode="text";
 let symbols=["1","2","3","4","5","6","7","8","9","10","11","12"];
@@ -511,6 +522,7 @@ function setColorVar(name,value){
   document.getElementById(m.picker).value=value;
   document.getElementById(m.value).textContent=value;
   updateHexPanel();
+  renderCustomSvgPreview();
 }
 
 function normalizeHex(v){
@@ -604,6 +616,8 @@ const customSvgStatus=document.getElementById("customSvgStatus");
 const clearCustomSvgButton=document.getElementById("clearCustomSvg");
 const fontSelect=document.getElementById("fontSelect");
 const symbolSizeInput=document.getElementById("symbolSize");
+const svgSymbolScaleInput=document.getElementById("svgSymbolScale");
+const svgSymbolScaleValue=document.getElementById("svgSymbolScaleValue");
 const symbolRadiusInput=document.getElementById("symbolRadius");
 const preview=document.getElementById("preview");
 
@@ -611,6 +625,7 @@ symbolGrayInput.oninput=e=>{
   symbolGray=Number(e.target.value);
   svgSymbolCacheKey="";
   customSvgCacheKey="";
+  renderCustomSvgPreview();
 };
 reverseInput.onchange=e=>reverse=e.target.checked;
 showSecondsInput.onchange=e=>showSecondHand=e.target.checked;
@@ -624,6 +639,7 @@ symbolRenderModeInput.onchange=e=>{
   symbolRenderMode=e.target.value;
   svgSymbolCacheKey="";
   updateCustomSvgStatus();
+  renderCustomSvgPreview();
   updatePreview();
 };
 
@@ -648,6 +664,7 @@ customSvgFilesInput.onchange=async e=>{
   symbolRenderMode="svgCustom";
   symbolRenderModeInput.value="svgCustom";
   updateCustomSvgStatus();
+  renderCustomSvgPreview();
   updatePreview();
 };
 
@@ -661,11 +678,16 @@ clearCustomSvgButton.onclick=()=>{
     symbolRenderModeInput.value="text";
   }
   updateCustomSvgStatus();
+  renderCustomSvgPreview();
   updatePreview();
 };
 
 fontSelect.onchange=e=>{font=e.target.value;svgSymbolCacheKey="";updatePreview();};
 symbolSizeInput.oninput=e=>{symbolSize=Number(e.target.value);updatePreview();};
+svgSymbolScaleInput.oninput=e=>{
+  svgSymbolScalePercent=Number(e.target.value);
+  svgSymbolScaleValue.textContent=svgSymbolScalePercent+"%";
+};
 symbolRadiusInput.oninput=e=>radiusPercent=Number(e.target.value);
 
 function updatePreview(){
@@ -692,6 +714,30 @@ function updateCustomSvgStatus(){
     }
   }else{
     customSvgStatus.textContent=count ? "SVG-набор сохранён в модели: "+count+" из 12. Для показа выберите режим SVG: пользовательский набор." : "Выберите 12 SVG-файлов. Файлы будут отсортированы по имени: 01.svg, 02.svg ... 12.svg.";
+  }
+}
+
+function renderCustomSvgPreview(){
+  if(!customSvgPreview)return;
+
+  customSvgPreview.innerHTML="";
+  const fill=applyGrayToColor(symbolColor,symbolGray);
+
+  for(let i=0;i<12;i++){
+    const cell=document.createElement("div");
+    cell.className="svg-preview-cell";
+
+    if(customSvgDataUris[i]){
+      const img=document.createElement("img");
+      img.alt=String(i+1).padStart(2,"0")+".svg";
+      img.src=makeColoredSvgDataUri(customSvgDataUris[i],fill);
+      cell.appendChild(img);
+    }else{
+      cell.classList.add("empty");
+      cell.textContent=String(i+1).padStart(2,"0");
+    }
+
+    customSvgPreview.appendChild(cell);
   }
 }
 
@@ -767,7 +813,7 @@ function ensureCustomSvgSymbolImages(){
 function drawClockSymbols(srX,srY){
   if(symbolRenderMode==="svgCustom" && customSvgDataUris.length){
     ensureCustomSvgSymbolImages();
-    const box=Math.max(18,symbolSize*1.75);
+    const box=Math.max(18,symbolSize*1.75*(svgSymbolScalePercent/100));
 
     for(let i=1;i<=12;i++){
       const a=i*Math.PI/6;
@@ -787,7 +833,7 @@ function drawClockSymbols(srX,srY){
 
   if(symbolRenderMode==="svgRoman"){
     ensureSvgSymbolImages();
-    const box=Math.max(18,symbolSize*1.75);
+    const box=Math.max(18,symbolSize*1.75*(svgSymbolScalePercent/100));
 
     for(let i=1;i<=12;i++){
       const a=i*Math.PI/6;
@@ -987,6 +1033,7 @@ function collectCurrentSettings(){
     autoDialAspect,
     font,
     symbolSize,
+    svgSymbolScalePercent,
     radiusPercent,
     symbolRenderMode,
     customSvgDataUris,
@@ -1014,6 +1061,7 @@ function applySettings(settings){
 
   font=settings.font || "Arial";
   symbolSize=Number(settings.symbolSize ?? 40);
+  svgSymbolScalePercent=Number(settings.svgSymbolScalePercent ?? 100);
   radiusPercent=Number(settings.radiusPercent ?? 70);
   symbolRenderMode=settings.symbolRenderMode || "text";
   customSvgDataUris=Array.isArray(settings.customSvgDataUris) ? settings.customSvgDataUris : [];
@@ -1047,11 +1095,14 @@ function syncControlsFromState(){
 
   fontSelect.value=font;
   symbolSizeInput.value=symbolSize;
+  svgSymbolScaleInput.value=svgSymbolScalePercent;
+  svgSymbolScaleValue.textContent=svgSymbolScalePercent+"%";
   symbolRadiusInput.value=radiusPercent;
   symbolRenderModeInput.value=symbolRenderMode;
   symbolsInput.value=symbols.join(" ");
 
   updateCustomSvgStatus();
+  renderCustomSvgPreview();
   updatePreview();
   updateHexPanel();
 }
@@ -1168,7 +1219,7 @@ function ensureSvgSymbolImages(fill,font){const key=[fill,font,ROMAN_SVG_SYMBOLS
 function decodeSvgDataUri(uri){const text=String(uri||"");const comma=text.indexOf(",");if(comma<0)return text;const body=text.slice(comma+1);try{return decodeURIComponent(body);}catch(e){try{return atob(body);}catch(err){return body;}}}
 function makeColoredSvgDataUri(uri,fill){let svg=decodeSvgDataUri(uri);svg=svg.replace(/currentColor/g,fill).replace(/currentcolor/g,fill);return "data:image/svg+xml;charset=utf-8,"+encodeURIComponent(svg);}
 function ensureCustomSvgSymbolImages(symbolFill){const data=Array.isArray(SETTINGS.customSvgDataUris)?SETTINGS.customSvgDataUris:[];const key=[symbolFill,data.join("||")].join("||COLOR||");if(customSvgCacheKey===key&&customSvgSymbolImages.length===data.length)return;customSvgCacheKey=key;customSvgSymbolImages=data.map(uri=>{const img=new Image();img.src=makeColoredSvgDataUri(uri,symbolFill);return img;});}
-function drawClockSymbols(ctx,srX,srY,symbols,symbolFill,font,symbolSize){if(SETTINGS.symbolRenderMode==="svgCustom"&&Array.isArray(SETTINGS.customSvgDataUris)&&SETTINGS.customSvgDataUris.length){ensureCustomSvgSymbolImages(symbolFill);const box=Math.max(18,symbolSize*1.75);for(let i=1;i<=12;i++){const a=i*Math.PI/6;const x=Math.sin(a)*srX;const y=-Math.cos(a)*srY;const img=customSvgSymbolImages[i-1];if(img&&img.complete&&img.naturalWidth>0){ctx.drawImage(img,x-box/2,y-box/2,box,box);}else{ctx.fillText(symbols[i-1]||String(i),x,y);}}return;}if(SETTINGS.symbolRenderMode==="svgRoman"){ensureSvgSymbolImages(symbolFill,font);const box=Math.max(18,symbolSize*1.75);for(let i=1;i<=12;i++){const a=i*Math.PI/6;const x=Math.sin(a)*srX;const y=-Math.cos(a)*srY;const img=svgSymbolImages[i-1];if(img&&img.complete&&img.naturalWidth>0){ctx.drawImage(img,x-box/2,y-box/2,box,box);}else{ctx.fillText(ROMAN_SVG_SYMBOLS[i-1],x,y);}}return;}for(let i=1;i<=12;i++){const a=i*Math.PI/6;ctx.fillText(symbols[i-1]||String(i),Math.sin(a)*srX,-Math.cos(a)*srY);}}
+function drawClockSymbols(ctx,srX,srY,symbols,symbolFill,font,symbolSize){if(SETTINGS.symbolRenderMode==="svgCustom"&&Array.isArray(SETTINGS.customSvgDataUris)&&SETTINGS.customSvgDataUris.length){ensureCustomSvgSymbolImages(symbolFill);const box=Math.max(18,symbolSize*1.75*(Number(SETTINGS.svgSymbolScalePercent||100)/100));for(let i=1;i<=12;i++){const a=i*Math.PI/6;const x=Math.sin(a)*srX;const y=-Math.cos(a)*srY;const img=customSvgSymbolImages[i-1];if(img&&img.complete&&img.naturalWidth>0){ctx.drawImage(img,x-box/2,y-box/2,box,box);}else{ctx.fillText(symbols[i-1]||String(i),x,y);}}return;}if(SETTINGS.symbolRenderMode==="svgRoman"){ensureSvgSymbolImages(symbolFill,font);const box=Math.max(18,symbolSize*1.75*(Number(SETTINGS.svgSymbolScalePercent||100)/100));for(let i=1;i<=12;i++){const a=i*Math.PI/6;const x=Math.sin(a)*srX;const y=-Math.cos(a)*srY;const img=svgSymbolImages[i-1];if(img&&img.complete&&img.naturalWidth>0){ctx.drawImage(img,x-box/2,y-box/2,box,box);}else{ctx.fillText(ROMAN_SVG_SYMBOLS[i-1],x,y);}}return;}for(let i=1;i<=12;i++){const a=i*Math.PI/6;ctx.fillText(symbols[i-1]||String(i),Math.sin(a)*srX,-Math.cos(a)*srY);}}
 function getTimeParts(){const now=new Date();return {hours:now.getHours(),minutes:now.getMinutes(),seconds:now.getSeconds(),milliseconds:now.getMilliseconds()};}
 function getEffectiveAspect(W,H){if(SETTINGS.autoDialAspect){return Math.max(0.5,Math.min(2.0,W/H));}return Number(SETTINGS.dialAspect||1);}
 function calculateDialGeometry(W,H){const margin=Math.max(40,Math.min(W,H)*0.08);const scale=Number(SETTINGS.clockSizeValue||100)/100;const availableW=Math.max(100,(W-margin*2)*scale);const availableH=Math.max(100,(H-margin*2)*scale);const aspect=getEffectiveAspect(W,H);let Rx,Ry;if(aspect>=availableW/availableH){Rx=availableW/2;Ry=Rx/aspect;}else{Ry=availableH/2;Rx=Ry*aspect;}return {Rx:Rx,Ry:Ry,R:Math.min(Rx,Ry),aspect:aspect};}
@@ -1313,6 +1364,7 @@ function loadSettingsFromURL(){
 async function initClockApp(){
   buildHexTable();
   updatePreview();
+  renderCustomSvgPreview();
   updateHexPanel();
   renderModelList();
 
