@@ -662,6 +662,11 @@ symbolsInput.oninput=e=>{
 symbolRenderModeInput.onchange=e=>{
   symbolRenderMode=e.target.value;
   svgSymbolCacheKey="";
+
+  if(symbolRenderMode!=="svgCustom"){
+    clearCustomSvgSetMemory();
+  }
+
   updateCustomSvgStatus();
   renderCustomSvgPreview();
   updatePreview();
@@ -693,10 +698,7 @@ customSvgFilesInput.onchange=async e=>{
 };
 
 clearCustomSvgButton.onclick=()=>{
-  customSvgFilesInput.value="";
-  customSvgDataUris=[];
-  customSvgSymbolImages=[];
-  customSvgCacheKey="";
+  clearCustomSvgSetMemory();
   if(symbolRenderMode==="svgCustom"){
     symbolRenderMode="text";
     symbolRenderModeInput.value="text";
@@ -728,6 +730,15 @@ function updatePreview(){
     preview.textContent=count===12 ? "SVG-набор: 12 символов загружены" : "SVG-набор: загружено "+count+" из 12";
   }else{
     preview.textContent=symbols.slice(0,12).join(" ")||"1 2 3 IV ★ א";
+  }
+}
+
+function clearCustomSvgSetMemory(){
+  customSvgDataUris=[];
+  customSvgSymbolImages=[];
+  customSvgCacheKey="";
+  if(customSvgFilesInput){
+    customSvgFilesInput.value="";
   }
 }
 
@@ -1042,6 +1053,9 @@ function draw(){
 }
 
 function collectCurrentSettings(){
+  const exportMode=symbolRenderMode;
+  const exportCustomSvgDataUris=(exportMode==="svgCustom") ? customSvgDataUris : [];
+
   return {
     screenBgColor,
     faceColor,
@@ -1063,8 +1077,8 @@ function collectCurrentSettings(){
     svgSymbolScalePercent,
     svgSymbolScale:svgSymbolScalePercent,
     radiusPercent,
-    symbolRenderMode,
-    customSvgDataUris,
+    symbolRenderMode:exportMode,
+    customSvgDataUris:exportCustomSvgDataUris,
     symbolsText:symbolsInput.value
   };
 }
@@ -1092,9 +1106,10 @@ function applySettings(settings){
   svgSymbolScalePercent=Number(settings.svgSymbolScalePercent ?? settings.svgSymbolScale ?? settings.svgScale ?? 100);
   radiusPercent=Number(settings.radiusPercent ?? 70);
   symbolRenderMode=settings.symbolRenderMode || "text";
-  customSvgDataUris=Array.isArray(settings.customSvgDataUris) ? settings.customSvgDataUris : [];
+  customSvgDataUris=(symbolRenderMode==="svgCustom" && Array.isArray(settings.customSvgDataUris)) ? settings.customSvgDataUris : [];
   svgSymbolCacheKey="";
   customSvgCacheKey="";
+  customSvgSymbolImages=[];
 
   const text=settings.symbolsText || "1 2 3 4 5 6 7 8 9 10 11 12";
   symbols=text.trim().split(/\s+/).filter(Boolean);
@@ -1351,8 +1366,12 @@ async function loadModelFromGitHubById(modelId,sourceLabel){
     const data=await response.json();
     const settings=data.settings || data;
 
-    if(settings.customSvgDataUris && Array.isArray(settings.customSvgDataUris) && settings.customSvgDataUris.length){
+    if((!settings.symbolRenderMode) && settings.customSvgDataUris && Array.isArray(settings.customSvgDataUris) && settings.customSvgDataUris.length){
       settings.symbolRenderMode="svgCustom";
+    }
+
+    if(settings.symbolRenderMode!=="svgCustom"){
+      settings.customSvgDataUris=[];
     }
 
     applySettings(settings);
@@ -1468,6 +1487,9 @@ function loadSettingsFromURL(){
     const encoded=location.hash.replace("#clock=","");
     const json=decodeURIComponent(escape(atob(encoded)));
     const settings=JSON.parse(json);
+    if(settings.symbolRenderMode!=="svgCustom"){
+      settings.customSvgDataUris=[];
+    }
     applySettings(settings);
     modelStatus.textContent="Модель загружена из ссылки.";
     return true;
