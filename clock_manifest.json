@@ -1,19 +1,19 @@
 {
   "name": "Clock Viewer",
   "short_name": "Clock",
-  "start_url": "./ClockViewerAndroid.html",
-  "scope": "./",
+  "start_url": "/trustworthy-ai-glossary/ClockViewerAndroid.html",
+  "scope": "/trustworthy-ai-glossary/",
   "display": "standalone",
   "background_color": "#0f172a",
   "theme_color": "#0f172a",
   "icons": [
     {
-      "src": "clock_icon_192.png",
+      "src": "/trustworthy-ai-glossary/clock_icon_192.png",
       "sizes": "192x192",
       "type": "image/png"
     },
     {
-      "src": "clock_icon_512.png",
+      "src": "/trustworthy-ai-glossary/clock_icon_512.png",
       "sizes": "512x512",
       "type": "image/png"
     }
