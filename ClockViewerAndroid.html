@@ -51,6 +51,16 @@ small{display:block;color:var(--muted);margin-top:4px;line-height:1.35}
 .svg-preview-cell{height:42px;border:1px solid #cbd5e1;border-radius:8px;background:#fff;display:flex;align-items:center;justify-content:center;overflow:hidden}
 .svg-preview-cell img{max-width:82%;max-height:82%;display:block}
 .svg-preview-cell.empty{color:#94a3b8;font-size:12px;font-family:Consolas,monospace}
+.model-picker{position:fixed;inset:0;background:rgba(15,23,42,.92);display:none;align-items:center;justify-content:center;padding:18px;z-index:60}
+.model-picker.active{display:flex}
+.model-picker-card{width:min(520px,96vw);max-height:86vh;overflow-y:auto;background:#fff;border-radius:18px;padding:18px;color:#1f2937;box-shadow:0 18px 48px rgba(0,0,0,.35)}
+.model-picker-card h2{margin:0 0 8px;font-size:22px}
+.model-picker-card p{margin:0 0 14px;color:#64748b;line-height:1.35}
+.model-picker-list{display:flex;flex-direction:column;gap:10px}
+.model-choice{width:100%;text-align:left;padding:12px 14px;border:1px solid #cbd5e1;border-radius:12px;background:#f8fafc;cursor:pointer;font-weight:bold;color:#1f2937}
+.model-choice:hover{background:#e2e8f0}
+.model-choice small{font-weight:normal;margin-top:4px}
+.model-picker-status{margin-top:12px;color:#64748b;font-size:13px;line-height:1.35}
 
 #exitBtn,#fullscreenBtn{position:fixed;top:10px;background:rgba(0,0,0,.42);color:#fff;border:none;border-radius:12px;padding:6px 14px;font-size:18px;line-height:1;cursor:pointer;z-index:20;backdrop-filter:blur(6px);box-shadow:0 4px 14px rgba(0,0,0,.25)}
 #exitBtn{left:calc(50% - 78px);transform:translateX(-50%)}
@@ -89,6 +99,15 @@ small{display:block;color:var(--muted);margin-top:4px;line-height:1.35}
 <button id="exitBtn" type="button" aria-label="Выход">✕</button>
 <button id="fullscreenBtn" type="button" aria-label="Полный экран">⛶</button>
 <div id="exitHint" role="status" aria-live="polite"></div>
+
+<div class="model-picker" id="modelPicker" role="dialog" aria-modal="true" aria-labelledby="modelPickerTitle">
+  <div class="model-picker-card">
+    <h2 id="modelPickerTitle">Выбор модели часов</h2>
+    <p>Выберите модель, которую нужно загрузить с GitHub.</p>
+    <div class="model-picker-list" id="modelPickerList"></div>
+    <div class="model-picker-status" id="modelPickerStatus">Загружаю список моделей…</div>
+  </div>
+</div>
 
 <div class="settings-panel" id="settingsPanel">
   <div class="panel">
@@ -280,9 +299,10 @@ function isIOSDevice(){
 }
 
 if(isIOSDevice()){
-  /* На iPhone оставляем кнопку полного экрана видимой.
-     В обычном Safari Fullscreen API может быть недоступен, но в PWA/браузерах,
-     где он поддерживается, кнопка сможет сработать. */
+  /* В Safari на iPhone Fullscreen API для обычной страницы не работает.
+     Поэтому кнопку полного экрана на iPhone скрываем. */
+  fullscreenButton.style.display="none";
+  exitButton.classList.add("ios-single-exit");
 }
 
 let constructorMode=false;
@@ -349,9 +369,12 @@ async function toggleFullscreen(){
   setTimeout(resizeCanvasToScreen,120);
 }
 
-fullscreenButton.onclick=toggleFullscreen;
+if(!isIOSDevice()){
+  fullscreenButton.onclick=toggleFullscreen;
+}
 
 function arrangeTopButtons(){
+  if(isIOSDevice())return;
   exitButton.classList.add("two-button-left");
   fullscreenButton.classList.add("two-button-right");
 }
@@ -613,6 +636,7 @@ const symbolsInput=document.getElementById("symbols");
 const symbolRenderModeInput=document.getElementById("symbolRenderMode");
 const customSvgFilesInput=document.getElementById("customSvgFiles");
 const customSvgStatus=document.getElementById("customSvgStatus");
+const customSvgPreview=document.getElementById("customSvgPreview");
 const clearCustomSvgButton=document.getElementById("clearCustomSvg");
 const fontSelect=document.getElementById("fontSelect");
 const symbolSizeInput=document.getElementById("symbolSize");
@@ -687,6 +711,9 @@ symbolSizeInput.oninput=e=>{symbolSize=Number(e.target.value);updatePreview();};
 svgSymbolScaleInput.oninput=e=>{
   svgSymbolScalePercent=Number(e.target.value);
   svgSymbolScaleValue.textContent=svgSymbolScalePercent+"%";
+  svgSymbolCacheKey="";
+  customSvgCacheKey="";
+  updatePreview();
 };
 symbolRadiusInput.oninput=e=>radiusPercent=Number(e.target.value);
 
@@ -1034,6 +1061,7 @@ function collectCurrentSettings(){
     font,
     symbolSize,
     svgSymbolScalePercent,
+    svgSymbolScale:svgSymbolScalePercent,
     radiusPercent,
     symbolRenderMode,
     customSvgDataUris,
@@ -1061,7 +1089,7 @@ function applySettings(settings){
 
   font=settings.font || "Arial";
   symbolSize=Number(settings.symbolSize ?? 40);
-  svgSymbolScalePercent=Number(settings.svgSymbolScalePercent ?? 100);
+  svgSymbolScalePercent=Number(settings.svgSymbolScalePercent ?? settings.svgSymbolScale ?? settings.svgScale ?? 100);
   radiusPercent=Number(settings.radiusPercent ?? 70);
   symbolRenderMode=settings.symbolRenderMode || "text";
   customSvgDataUris=Array.isArray(settings.customSvgDataUris) ? settings.customSvgDataUris : [];
@@ -1124,6 +1152,9 @@ function saveModels(models){
 const modelNameInput=document.getElementById("modelName");
 const modelStatus=document.getElementById("modelStatus");
 const modelList=document.getElementById("modelList");
+const modelPicker=document.getElementById("modelPicker");
+const modelPickerList=document.getElementById("modelPickerList");
+const modelPickerStatus=document.getElementById("modelPickerStatus");
 
 document.getElementById("saveModel").onclick=()=>{
   const name=modelNameInput.value.trim();
@@ -1219,7 +1250,7 @@ function ensureSvgSymbolImages(fill,font){const key=[fill,font,ROMAN_SVG_SYMBOLS
 function decodeSvgDataUri(uri){const text=String(uri||"");const comma=text.indexOf(",");if(comma<0)return text;const body=text.slice(comma+1);try{return decodeURIComponent(body);}catch(e){try{return atob(body);}catch(err){return body;}}}
 function makeColoredSvgDataUri(uri,fill){let svg=decodeSvgDataUri(uri);svg=svg.replace(/currentColor/g,fill).replace(/currentcolor/g,fill);return "data:image/svg+xml;charset=utf-8,"+encodeURIComponent(svg);}
 function ensureCustomSvgSymbolImages(symbolFill){const data=Array.isArray(SETTINGS.customSvgDataUris)?SETTINGS.customSvgDataUris:[];const key=[symbolFill,data.join("||")].join("||COLOR||");if(customSvgCacheKey===key&&customSvgSymbolImages.length===data.length)return;customSvgCacheKey=key;customSvgSymbolImages=data.map(uri=>{const img=new Image();img.src=makeColoredSvgDataUri(uri,symbolFill);return img;});}
-function drawClockSymbols(ctx,srX,srY,symbols,symbolFill,font,symbolSize){if(SETTINGS.symbolRenderMode==="svgCustom"&&Array.isArray(SETTINGS.customSvgDataUris)&&SETTINGS.customSvgDataUris.length){ensureCustomSvgSymbolImages(symbolFill);const box=Math.max(18,symbolSize*1.75*(Number(SETTINGS.svgSymbolScalePercent||100)/100));for(let i=1;i<=12;i++){const a=i*Math.PI/6;const x=Math.sin(a)*srX;const y=-Math.cos(a)*srY;const img=customSvgSymbolImages[i-1];if(img&&img.complete&&img.naturalWidth>0){ctx.drawImage(img,x-box/2,y-box/2,box,box);}else{ctx.fillText(symbols[i-1]||String(i),x,y);}}return;}if(SETTINGS.symbolRenderMode==="svgRoman"){ensureSvgSymbolImages(symbolFill,font);const box=Math.max(18,symbolSize*1.75*(Number(SETTINGS.svgSymbolScalePercent||100)/100));for(let i=1;i<=12;i++){const a=i*Math.PI/6;const x=Math.sin(a)*srX;const y=-Math.cos(a)*srY;const img=svgSymbolImages[i-1];if(img&&img.complete&&img.naturalWidth>0){ctx.drawImage(img,x-box/2,y-box/2,box,box);}else{ctx.fillText(ROMAN_SVG_SYMBOLS[i-1],x,y);}}return;}for(let i=1;i<=12;i++){const a=i*Math.PI/6;ctx.fillText(symbols[i-1]||String(i),Math.sin(a)*srX,-Math.cos(a)*srY);}}
+function drawClockSymbols(ctx,srX,srY,symbols,symbolFill,font,symbolSize){if(SETTINGS.symbolRenderMode==="svgCustom"&&Array.isArray(SETTINGS.customSvgDataUris)&&SETTINGS.customSvgDataUris.length){ensureCustomSvgSymbolImages(symbolFill);const box=Math.max(18,symbolSize*1.75*(Number(SETTINGS.svgSymbolScalePercent||SETTINGS.svgSymbolScale||SETTINGS.svgScale||100)/100));for(let i=1;i<=12;i++){const a=i*Math.PI/6;const x=Math.sin(a)*srX;const y=-Math.cos(a)*srY;const img=customSvgSymbolImages[i-1];if(img&&img.complete&&img.naturalWidth>0){ctx.drawImage(img,x-box/2,y-box/2,box,box);}else{ctx.fillText(symbols[i-1]||String(i),x,y);}}return;}if(SETTINGS.symbolRenderMode==="svgRoman"){ensureSvgSymbolImages(symbolFill,font);const box=Math.max(18,symbolSize*1.75*(Number(SETTINGS.svgSymbolScalePercent||SETTINGS.svgSymbolScale||SETTINGS.svgScale||100)/100));for(let i=1;i<=12;i++){const a=i*Math.PI/6;const x=Math.sin(a)*srX;const y=-Math.cos(a)*srY;const img=svgSymbolImages[i-1];if(img&&img.complete&&img.naturalWidth>0){ctx.drawImage(img,x-box/2,y-box/2,box,box);}else{ctx.fillText(ROMAN_SVG_SYMBOLS[i-1],x,y);}}return;}for(let i=1;i<=12;i++){const a=i*Math.PI/6;ctx.fillText(symbols[i-1]||String(i),Math.sin(a)*srX,-Math.cos(a)*srY);}}
 function getTimeParts(){const now=new Date();return {hours:now.getHours(),minutes:now.getMinutes(),seconds:now.getSeconds(),milliseconds:now.getMilliseconds()};}
 function getEffectiveAspect(W,H){if(SETTINGS.autoDialAspect){return Math.max(0.5,Math.min(2.0,W/H));}return Number(SETTINGS.dialAspect||1);}
 function calculateDialGeometry(W,H){const margin=Math.max(40,Math.min(W,H)*0.08);const scale=Number(SETTINGS.clockSizeValue||100)/100;const availableW=Math.max(100,(W-margin*2)*scale);const availableH=Math.max(100,(H-margin*2)*scale);const aspect=getEffectiveAspect(W,H);let Rx,Ry;if(aspect>=availableW/availableH){Rx=availableW/2;Ry=Rx/aspect;}else{Ry=availableH/2;Rx=Ry*aspect;}return {Rx:Rx,Ry:Ry,R:Math.min(Rx,Ry),aspect:aspect};}
@@ -1299,20 +1330,20 @@ document.getElementById("exportModelJson").onclick=()=>{
   modelStatus.textContent="Экспортирован MODEL JSON: "+model.id+".json";
 };
 
-async function loadModelFromGitHubQuery(){
-  const params=new URLSearchParams(location.search);
-  const modelParam=params.get("model");
-  if(!modelParam)return false;
-
-  const modelId=normalizeModelId(modelParam);
-  const modelUrl="models/"+modelId+".json?v="+Date.now();
+async function loadModelFromGitHubById(modelId,sourceLabel){
+  const normalizedId=normalizeModelId(modelId);
+  const modelUrl="models/"+normalizedId+".json?v="+Date.now();
 
   try{
-    modelStatus.textContent="Загружаю модель из GitHub: "+modelId+"...";
+    modelStatus.textContent="Загружаю модель из GitHub: "+normalizedId+"...";
+    if(modelPickerStatus)modelPickerStatus.textContent="Загружаю модель: "+normalizedId+"...";
+
     const response=await fetch(modelUrl,{cache:"no-store"});
 
     if(!response.ok){
-      modelStatus.textContent="Не удалось загрузить модель: "+modelUrl;
+      const msg="Не удалось загрузить модель: "+modelUrl;
+      modelStatus.textContent=msg;
+      if(modelPickerStatus)modelPickerStatus.textContent=msg;
       console.log("Model fetch failed:",response.status,response.statusText,modelUrl);
       return false;
     }
@@ -1325,12 +1356,97 @@ async function loadModelFromGitHubQuery(){
     }
 
     applySettings(settings);
-    modelNameInput.value=data.name || data.id || modelId;
-    modelStatus.textContent="Модель загружена из GitHub: "+(data.name || modelId);
+    modelNameInput.value=data.name || data.title || data.id || normalizedId;
+    modelStatus.textContent="Модель загружена из GitHub: "+(data.name || data.title || normalizedId);
+
+    try{
+      localStorage.setItem("clock_last_github_model",normalizedId);
+    }catch(e){}
+
+    if(modelPicker)modelPicker.classList.remove("active");
     return true;
   }catch(e){
-    modelStatus.textContent="Ошибка загрузки модели из GitHub: "+modelId;
+    const msg="Ошибка загрузки модели из GitHub: "+normalizedId;
+    modelStatus.textContent=msg;
+    if(modelPickerStatus)modelPickerStatus.textContent=msg;
     console.log("Ошибка загрузки модели:",e);
+    return false;
+  }
+}
+
+async function loadModelFromGitHubQuery(){
+  const params=new URLSearchParams(location.search);
+  const modelParam=params.get("model");
+  if(!modelParam)return false;
+  return await loadModelFromGitHubById(modelParam,"query");
+}
+
+function normalizeModelIndexItem(item){
+  if(typeof item==="string"){
+    return {id:normalizeModelId(item),title:item,description:""};
+  }
+
+  if(item && typeof item==="object"){
+    const id=normalizeModelId(item.id || item.name || item.title);
+    return {
+      id:id,
+      title:item.title || item.name || id,
+      description:item.description || item.desc || ""
+    };
+  }
+
+  return null;
+}
+
+async function showModelPickerFromIndex(){
+  if(!modelPicker || !modelPickerList || !modelPickerStatus)return false;
+
+  modelPicker.classList.add("active");
+  modelPickerList.innerHTML="";
+  modelPickerStatus.textContent="Загружаю список моделей…";
+
+  try{
+    const response=await fetch("models/index.json?v="+Date.now(),{cache:"no-store"});
+
+    if(!response.ok){
+      modelPickerStatus.textContent="Не удалось загрузить models/index.json. Проверьте, что файл есть в GitHub.";
+      return false;
+    }
+
+    const raw=await response.json();
+    const items=(Array.isArray(raw) ? raw : raw.models || [])
+      .map(normalizeModelIndexItem)
+      .filter(Boolean);
+
+    if(!items.length){
+      modelPickerStatus.textContent="В models/index.json нет моделей.";
+      return false;
+    }
+
+    items.forEach(item=>{
+      const btn=document.createElement("button");
+      btn.type="button";
+      btn.className="model-choice";
+      btn.textContent=item.title;
+
+      if(item.description){
+        const small=document.createElement("small");
+        small.textContent=item.description;
+        btn.appendChild(small);
+      }
+
+      btn.onclick=async ()=>{
+        await loadModelFromGitHubById(item.id,"picker");
+      };
+
+      modelPickerList.appendChild(btn);
+    });
+
+    modelPickerStatus.textContent="Доступно моделей: "+items.length;
+    return true;
+  }catch(e){
+    modelPickerStatus.textContent="Ошибка загрузки списка моделей.";
+    console.log("Ошибка загрузки models/index.json:",e);
     return false;
   }
 }
@@ -1370,7 +1486,10 @@ async function initClockApp(){
 
   const loadedFromHash=loadSettingsFromURL();
   if(!loadedFromHash){
-    await loadModelFromGitHubQuery();
+    const loadedFromQuery=await loadModelFromGitHubQuery();
+    if(!loadedFromQuery){
+      await showModelPickerFromIndex();
+    }
   }
 
   draw();
