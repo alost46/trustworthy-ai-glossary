@@ -69,6 +69,16 @@ small{display:block;color:var(--muted);margin-top:4px;line-height:1.35}
 .model-choice:hover{background:#e2e8f0}
 .model-choice small{font-weight:normal;margin-top:4px}
 .model-picker-status{margin-top:12px;color:#64748b;font-size:13px;line-height:1.35}
+.status-flash{animation:statusFlash 1.2s ease-out}
+.button-flash{animation:buttonFlash 1.2s ease-out}
+@keyframes statusFlash{
+  0%{background:#dcfce7;color:#14532d}
+  100%{background:transparent;color:#64748b}
+}
+@keyframes buttonFlash{
+  0%{filter:brightness(1.35);box-shadow:0 0 0 4px rgba(34,197,94,.35)}
+  100%{filter:none;box-shadow:none}
+}
 
 #exitBtn,#fullscreenBtn{position:fixed;top:10px;background:rgba(0,0,0,.42);color:#fff;border:none;border-radius:12px;padding:6px 14px;font-size:18px;line-height:1;cursor:pointer;z-index:20;backdrop-filter:blur(6px);box-shadow:0 4px 14px rgba(0,0,0,.25)}
 #exitBtn{left:calc(50% - 78px);transform:translateX(-50%)}
@@ -118,7 +128,6 @@ small{display:block;color:var(--muted);margin-top:4px;line-height:1.35}
       <button type="button" class="done-btn secondary-btn" id="modelPickerImportJson" style="background:#0891b2;">Import LOCAL MODEL JSON</button>
       <small>Если вместе с HTML вам прислали JSON-модель, импортируйте её здесь. Полный конструктор открывается длительным нажатием на циферблат.</small>
     </div>
-    <button type="button" class="done-btn secondary-btn" id="modelPickerClose" style="margin-top:8px;">Закрыть</button>
     <div class="model-picker-status" id="modelPickerStatus">Загружаю список моделей…</div>
   </div>
 </div>
@@ -1583,6 +1592,22 @@ document.getElementById("exportModelJson").onclick=()=>{
   modelStatus.textContent="Экспортирован MODEL JSON: "+model.id+".json";
 };
 
+function showModelStatus(message,buttonId){
+  modelStatus.textContent=message;
+  modelStatus.classList.remove("status-flash");
+  void modelStatus.offsetWidth;
+  modelStatus.classList.add("status-flash");
+
+  if(buttonId){
+    const btn=document.getElementById(buttonId);
+    if(btn){
+      btn.classList.remove("button-flash");
+      void btn.offsetWidth;
+      btn.classList.add("button-flash");
+    }
+  }
+}
+
 function getDeviceOverrideKey(modelId){
   return "clock_device_override_"+normalizeModelId(modelId);
 }
@@ -1635,23 +1660,23 @@ function loadDeviceOverride(modelId){
 function saveDeviceOverride(modelId){
   const id=normalizeModelId(modelId || currentGitHubModelId || modelNameInput.value);
   if(!id){
-    modelStatus.textContent="Сначала загрузите или выберите модель.";
+    showModelStatus("Сначала загрузите или выберите модель.",null);
     return;
   }
 
   localStorage.setItem(getDeviceOverrideKey(id),JSON.stringify(collectDeviceOverrideSettings()));
-  modelStatus.textContent="Локальная настройка устройства сохранена для модели: "+id;
+  showModelStatus("✅ Настройка этого устройства сохранена для модели: "+id,"saveDeviceOverride");
 }
 
 function clearDeviceOverride(modelId){
   const id=normalizeModelId(modelId || currentGitHubModelId || modelNameInput.value);
   if(!id){
-    modelStatus.textContent="Сначала загрузите или выберите модель.";
+    showModelStatus("Сначала загрузите или выберите модель.",null);
     return;
   }
 
   localStorage.removeItem(getDeviceOverrideKey(id));
-  modelStatus.textContent="Локальная настройка устройства сброшена для модели: "+id;
+  showModelStatus("🧹 Настройка этого устройства сброшена для модели: "+id,"clearDeviceOverride");
 }
 
 async function loadModelFromGitHubById(modelId,sourceLabel){
