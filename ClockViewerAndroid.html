@@ -1972,6 +1972,56 @@ function makeLocalModelLaunchLink(name){
   return location.origin+location.pathname+"?local="+encodeURIComponent(modelName);
 }
 
+
+function showLocalModelsPanel(){
+  if(!modelPicker || !modelPickerList || !modelPickerStatus)return false;
+
+  modelPicker.classList.add("active");
+  modelPickerList.innerHTML="";
+  if(modelPickerImportBox)modelPickerImportBox.style.display="block";
+
+  const localModels=loadModels();
+  const localNames=Object.keys(localModels)
+    .filter(isLocalModelName)
+    .sort((a,b)=>a.localeCompare(b,"ru"));
+
+  if(!localNames.length){
+    modelPickerStatus.textContent="Локальных моделей пока нет. Можно импортировать JSON-модель или восстановить Backup.";
+    return false;
+  }
+
+  const title=document.createElement("div");
+  title.style.margin="0 0 8px";
+  title.style.fontWeight="bold";
+  title.textContent="Локальные модели этого устройства";
+  modelPickerList.appendChild(title);
+
+  localNames.forEach(name=>{
+    const btn=document.createElement("button");
+    btn.type="button";
+    btn.className="model-choice";
+    btn.textContent=name;
+
+    const small=document.createElement("small");
+    small.textContent="Локальная модель";
+    btn.appendChild(small);
+
+    btn.onclick=()=>{
+      loadLocalModelByName(name);
+    };
+
+    modelPickerList.appendChild(btn);
+  });
+
+  modelPickerStatus.textContent="Доступно локальных моделей: "+localNames.length;
+  return true;
+}
+
+function shouldShowLocalPanel(){
+  const params=new URLSearchParams(location.search);
+  return params.has("localpanel") || params.get("panel")==="local";
+}
+
 async function showModelPickerFromIndex(){
   if(!modelPicker || !modelPickerList || !modelPickerStatus)return false;
 
@@ -2214,11 +2264,15 @@ async function initClockApp(){
 
   const loadedFromHash=loadSettingsFromURL();
   if(!loadedFromHash){
-    const loadedFromLocal=loadLocalModelFromQuery();
-    if(!loadedFromLocal){
-      const loadedFromQuery=await loadModelFromGitHubQuery();
-      if(!loadedFromQuery){
-        await showModelPickerFromIndex();
+    if(shouldShowLocalPanel()){
+      showLocalModelsPanel();
+    }else{
+      const loadedFromLocal=loadLocalModelFromQuery();
+      if(!loadedFromLocal){
+        const loadedFromQuery=await loadModelFromGitHubQuery();
+        if(!loadedFromQuery){
+          await showModelPickerFromIndex();
+        }
       }
     }
   }
