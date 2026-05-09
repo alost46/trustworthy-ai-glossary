@@ -9,7 +9,13 @@
 <title>Clock Viewer</title>
 <style>
 :root{--bg:#0f172a;--text:#1f2937;--muted:#64748b}
-*{box-sizing:border-box}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body,canvas{
+  -webkit-touch-callout:none;
+  -webkit-user-select:none;
+  user-select:none;
+  touch-action:manipulation;
+}
 body{margin:0;background:var(--bg);font-family:Arial,sans-serif;overflow:hidden}
 .clock-screen{width:100vw;height:100vh;display:flex;align-items:center;justify-content:center}
 .clock-wrap{width:100vw;height:100vh}
@@ -126,6 +132,8 @@ small{display:block;color:var(--muted);margin-top:4px;line-height:1.35}
           <button type="button" class="done-btn secondary-btn" id="exportHtml" style="margin-top:8px;">Export HTML</button>
           <button type="button" class="done-btn secondary-btn" id="exportLink" style="margin-top:8px;background:#059669;">Export LINK</button>
           <button type="button" class="done-btn secondary-btn" id="exportModelJson" style="margin-top:8px;background:#7c3aed;">Export MODEL JSON</button>
+          <button type="button" class="done-btn secondary-btn" id="saveDeviceOverride" style="margin-top:8px;background:#0ea5e9;">Сохранить настройку этого устройства</button>
+          <button type="button" class="done-btn secondary-btn" id="clearDeviceOverride" style="margin-top:8px;background:#b45309;">Сбросить настройку устройства</button>
         </div>
       </div>
       <small id="modelStatus">Сохранённые модели появятся ниже.</small>
@@ -381,27 +389,80 @@ function arrangeTopButtons(){
 
 arrangeTopButtons();
 
-if("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost")){
+/* Во время активной разработки service worker отключён:
+   он слишком охотно хранит старые версии HTML/JSON и мешает отладке. */
+if("serviceWorker" in navigator){
   window.addEventListener("load",()=>{
-    navigator.serviceWorker.register("clock_service_worker.js").catch(e=>console.log("Service worker не зарегистрирован:",e));
+    navigator.serviceWorker.getRegistrations()
+      .then(regs=>regs.forEach(reg=>reg.unregister()))
+      .catch(e=>console.log("Service worker cleanup error:",e));
   });
 }
 
-/* Телефон: долгое нажатие по циферблату включает/выключает режим конструктора */
-canvas.addEventListener("pointerdown",e=>{
-  if(e.button && e.button!==0)return;
+if(window.caches){
+  window.addEventListener("load",()=>{
+    caches.keys()
+      .then(keys=>keys.forEach(key=>caches.delete(key)))
+      .catch(e=>console.log("Cache cleanup error:",e));
+  });
+}
+
+function clearLongPressTimer(){
+  if(longPressTimer){
+    clearTimeout(longPressTimer);
+    longPressTimer=null;
+  }
+}
+
+function startLongPressTimer(){
+  clearLongPressTimer();
   longPressTimer=setTimeout(()=>{
     toggleConstructorMode();
-  },1200);
+    longPressTimer=null;
+  },750);
+}
+
+/* iPhone/iPad: touchstart перехватывает долгое нажатие раньше системного Copy */
+canvas.addEventListener("touchstart",e=>{
+  e.preventDefault();
+  startLongPressTimer();
+},{passive:false});
+
+canvas.addEventListener("touchend",e=>{
+  e.preventDefault();
+  clearLongPressTimer();
+},{passive:false});
+
+canvas.addEventListener("touchcancel",e=>{
+  e.preventDefault();
+  clearLongPressTimer();
+},{passive:false});
+
+canvas.addEventListener("touchmove",e=>{
+  e.preventDefault();
+  clearLongPressTimer();
+},{passive:false});
+
+/* Android/ПК: pointer-события. На touch-устройствах iOS уже обработан выше. */
+canvas.addEventListener("pointerdown",e=>{
+  if(e.pointerType==="touch")return;
+  if(e.button && e.button!==0)return;
+  startLongPressTimer();
 });
-canvas.addEventListener("pointerup",()=>clearTimeout(longPressTimer));
-canvas.addEventListener("pointercancel",()=>clearTimeout(longPressTimer));
-canvas.addEventListener("pointermove",()=>clearTimeout(longPressTimer));
+canvas.addEventListener("pointerup",clearLongPressTimer);
+canvas.addEventListener("pointercancel",clearLongPressTimer);
+canvas.addEventListener("pointermove",clearLongPressTimer);
 
 /* ПК: правая кнопка мыши по циферблату включает/выключает режим конструктора */
 canvas.addEventListener("contextmenu",e=>{
   e.preventDefault();
+  if(e.pointerType==="touch")return;
   toggleConstructorMode();
+});
+
+/* Дополнительная защита от системного меню Copy/Share */
+document.addEventListener("contextmenu",e=>{
+  e.preventDefault();
 });
 
 let screenBgColor="#0f172a";
@@ -439,6 +500,7 @@ let customSvgCacheKey="";
 
 const STORAGE_KEY="clock_constructor_models_v6";
 const VIEWER_URL="https://alost46.github.io/trustworthy-ai-glossary/ClockViewerAndroid.html";
+let currentGitHubModelId="";
 
 const colorMap={
   screenBgColor:{picker:"screenBgColorPicker",value:"screenBgColorValue"},
@@ -1185,6 +1247,14 @@ document.getElementById("saveModel").onclick=()=>{
   renderModelList();
 };
 
+document.getElementById("saveDeviceOverride").onclick=()=>{
+  saveDeviceOverride(currentGitHubModelId || modelNameInput.value);
+};
+
+document.getElementById("clearDeviceOverride").onclick=()=>{
+  clearDeviceOverride(currentGitHubModelId || modelNameInput.value);
+};
+
 function renderModelList(){
   const models=loadModels();
   const names=Object.keys(models).sort((a,b)=>a.localeCompare(b,"ru"));
@@ -1210,8 +1280,9 @@ function renderModelList(){
     loadBtn.onclick=()=>{
       const fresh=loadModels();
       applySettings(fresh[name]);
+      currentGitHubModelId="";
       modelNameInput.value=name;
-      modelStatus.textContent="Загружена модель: "+name;
+      modelStatus.textContent="Загружена локальная модель: "+name;
     };
 
     const deleteBtn=document.createElement("button");
@@ -1345,9 +1416,80 @@ document.getElementById("exportModelJson").onclick=()=>{
   modelStatus.textContent="Экспортирован MODEL JSON: "+model.id+".json";
 };
 
+function getDeviceOverrideKey(modelId){
+  return "clock_device_override_"+normalizeModelId(modelId);
+}
+
+function collectDeviceOverrideSettings(){
+  return {
+    clockSizeValue,
+    dialAspect,
+    autoDialAspect,
+    symbolSize,
+    svgSymbolScalePercent,
+    svgSymbolScale:svgSymbolScalePercent,
+    radiusPercent,
+    showDigitalClock,
+    showDigital24,
+    showSecondHand
+  };
+}
+
+function applyDeviceOverrideSettings(settings){
+  if(!settings || typeof settings!=="object")return;
+
+  if(settings.clockSizeValue!==undefined)clockSizeValue=Number(settings.clockSizeValue);
+  if(settings.dialAspect!==undefined)dialAspect=Number(settings.dialAspect);
+  if(settings.autoDialAspect!==undefined)autoDialAspect=Boolean(settings.autoDialAspect);
+  if(settings.symbolSize!==undefined)symbolSize=Number(settings.symbolSize);
+  if(settings.svgSymbolScalePercent!==undefined || settings.svgSymbolScale!==undefined || settings.svgScale!==undefined){
+    svgSymbolScalePercent=Number(settings.svgSymbolScalePercent ?? settings.svgSymbolScale ?? settings.svgScale);
+  }
+  if(settings.radiusPercent!==undefined)radiusPercent=Number(settings.radiusPercent);
+  if(settings.showDigitalClock!==undefined)showDigitalClock=Boolean(settings.showDigitalClock);
+  if(settings.showDigital24!==undefined)showDigital24=Boolean(settings.showDigital24);
+  if(settings.showSecondHand!==undefined)showSecondHand=Boolean(settings.showSecondHand);
+
+  svgSymbolCacheKey="";
+  customSvgCacheKey="";
+  syncControlsFromState();
+}
+
+function loadDeviceOverride(modelId){
+  try{
+    const raw=localStorage.getItem(getDeviceOverrideKey(modelId));
+    if(!raw)return null;
+    return JSON.parse(raw);
+  }catch(e){
+    return null;
+  }
+}
+
+function saveDeviceOverride(modelId){
+  const id=normalizeModelId(modelId || currentGitHubModelId || modelNameInput.value);
+  if(!id){
+    modelStatus.textContent="Сначала загрузите или выберите модель.";
+    return;
+  }
+
+  localStorage.setItem(getDeviceOverrideKey(id),JSON.stringify(collectDeviceOverrideSettings()));
+  modelStatus.textContent="Локальная настройка устройства сохранена для модели: "+id;
+}
+
+function clearDeviceOverride(modelId){
+  const id=normalizeModelId(modelId || currentGitHubModelId || modelNameInput.value);
+  if(!id){
+    modelStatus.textContent="Сначала загрузите или выберите модель.";
+    return;
+  }
+
+  localStorage.removeItem(getDeviceOverrideKey(id));
+  modelStatus.textContent="Локальная настройка устройства сброшена для модели: "+id;
+}
+
 async function loadModelFromGitHubById(modelId,sourceLabel){
   const normalizedId=normalizeModelId(modelId);
-  const modelUrl="models/"+normalizedId+".json?v="+Date.now();
+  const modelUrl="models/"+normalizedId+".json?v="+Date.now()+"_"+Math.random().toString(36).slice(2);
 
   try{
     modelStatus.textContent="Загружаю модель из GitHub: "+normalizedId+"...";
@@ -1375,8 +1517,17 @@ async function loadModelFromGitHubById(modelId,sourceLabel){
     }
 
     applySettings(settings);
+    currentGitHubModelId=normalizedId;
+
+    const localOverride=loadDeviceOverride(normalizedId);
+    if(localOverride){
+      applyDeviceOverrideSettings(localOverride);
+    }
+
     modelNameInput.value=data.name || data.title || data.id || normalizedId;
-    modelStatus.textContent="Модель загружена из GitHub: "+(data.name || data.title || normalizedId);
+    modelStatus.textContent=localOverride
+      ? "Модель загружена из GitHub с локальной настройкой устройства: "+(data.name || data.title || normalizedId)
+      : "Модель загружена из GitHub: "+(data.name || data.title || normalizedId);
 
     try{
       localStorage.setItem("clock_last_github_model",normalizedId);
@@ -1425,7 +1576,7 @@ async function showModelPickerFromIndex(){
   modelPickerStatus.textContent="Загружаю список моделей…";
 
   try{
-    const response=await fetch("models/index.json?v="+Date.now(),{cache:"no-store"});
+    const response=await fetch("models/index.json?v="+Date.now()+"_"+Math.random().toString(36).slice(2),{cache:"no-store"});
 
     if(!response.ok){
       modelPickerStatus.textContent="Не удалось загрузить models/index.json. Проверьте, что файл есть в GitHub.";
