@@ -48,7 +48,7 @@ small{display:block;color:var(--muted);margin-top:4px;line-height:1.35}
 .hex-cell.active{background:#111827;color:#fff}
 .hex-preview{height:36px;border-radius:8px;border:1px solid #cbd5e1;margin-top:10px}
 .model-list{display:flex;flex-direction:column;gap:8px;margin-top:10px}
-.model-row{display:grid;grid-template-columns:1fr auto auto auto;gap:8px;align-items:center;background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:8px}
+.model-row{display:grid;grid-template-columns:1fr auto auto auto auto;gap:8px;align-items:center;background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:8px}
 .model-name{font-weight:bold;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .model-row button{padding:7px 10px;border:none;border-radius:8px;color:#fff;cursor:pointer;font-weight:bold}
 .load-model{background:#2563eb}
@@ -59,7 +59,9 @@ small{display:block;color:var(--muted);margin-top:4px;line-height:1.35}
 .svg-preview-cell.empty{color:#94a3b8;font-size:12px;font-family:Consolas,monospace}
 .model-picker{position:fixed;inset:0;background:rgba(15,23,42,.92);display:none;align-items:center;justify-content:center;padding:18px;z-index:60}
 .model-picker.active{display:flex}
-.model-picker-card{width:min(520px,96vw);max-height:86vh;overflow-y:auto;background:#fff;border-radius:18px;padding:18px;color:#1f2937;box-shadow:0 18px 48px rgba(0,0,0,.35)}
+.model-picker-card{position:relative;width:min(520px,96vw);max-height:86vh;overflow-y:auto;background:#fff;border-radius:18px;padding:18px;color:#1f2937;box-shadow:0 18px 48px rgba(0,0,0,.35)}
+.model-picker-exit{position:absolute;right:12px;top:10px;width:34px;height:34px;border:none;border-radius:10px;background:#0f172a;color:#fff;font-size:20px;line-height:1;cursor:pointer}
+.model-picker-exit:hover{background:#1e293b}
 .model-picker-card h2{margin:0 0 8px;font-size:22px}
 .model-picker-card p{margin:0 0 14px;color:#64748b;line-height:1.35}
 .model-picker-list{display:flex;flex-direction:column;gap:10px}
@@ -108,6 +110,7 @@ small{display:block;color:var(--muted);margin-top:4px;line-height:1.35}
 
 <div class="model-picker" id="modelPicker" role="dialog" aria-modal="true" aria-labelledby="modelPickerTitle">
   <div class="model-picker-card">
+    <button type="button" class="model-picker-exit" id="modelPickerExit" aria-label="Выход">✕</button>
     <h2 id="modelPickerTitle">Выбор модели часов</h2>
     <p>Выберите модель, которую нужно загрузить с GitHub.</p>
     <div class="model-picker-list" id="modelPickerList"></div>
@@ -1242,6 +1245,7 @@ const modelPickerList=document.getElementById("modelPickerList");
 const modelPickerImportBox=document.getElementById("modelPickerImportBox");
 const modelPickerImportJson=document.getElementById("modelPickerImportJson");
 const modelPickerClose=document.getElementById("modelPickerClose");
+const modelPickerExit=document.getElementById("modelPickerExit");
 const modelPickerStatus=document.getElementById("modelPickerStatus");
 const importLocalModelFile=document.getElementById("importLocalModelFile");
 
@@ -1359,6 +1363,12 @@ if(modelPickerClose){
   };
 }
 
+if(modelPickerExit){
+  modelPickerExit.onclick=()=>{
+    window.location.href="https://www.google.com/";
+  };
+}
+
 function renderModelList(){
   const models=loadModels();
   const names=Object.keys(models).sort((a,b)=>a.localeCompare(b,"ru"));
@@ -1401,6 +1411,20 @@ function renderModelList(){
       modelStatus.textContent="Экспортирована локальная модель: "+name;
     };
 
+    const linkBtn=document.createElement("button");
+    linkBtn.className="load-model";
+    linkBtn.type="button";
+    linkBtn.style.background="#7c3aed";
+    linkBtn.textContent="Link";
+    linkBtn.onclick=()=>{
+      const url=makeLocalModelLaunchLink(name);
+      navigator.clipboard.writeText(url).then(()=>{
+        modelStatus.textContent="Ссылка локального запуска скопирована: "+name;
+      }).catch(()=>{
+        prompt("Ссылка для локальной модели:",url);
+      });
+    };
+
     const deleteBtn=document.createElement("button");
     deleteBtn.className="delete-model";
     deleteBtn.type="button";
@@ -1416,6 +1440,7 @@ function renderModelList(){
     row.appendChild(title);
     row.appendChild(loadBtn);
     row.appendChild(exportBtn);
+    row.appendChild(linkBtn);
     row.appendChild(deleteBtn);
     modelList.appendChild(row);
   });
@@ -1710,6 +1735,52 @@ function normalizeModelIndexItem(item){
   return null;
 }
 
+function loadLocalModelByName(name){
+  const modelName=String(name||"").trim();
+  if(!modelName)return false;
+
+  const models=loadModels();
+  const exact=models[modelName];
+
+  let resolvedName=modelName;
+  let settings=exact;
+
+  if(!settings){
+    const names=Object.keys(models);
+    const found=names.find(n=>n.toLowerCase()===modelName.toLowerCase());
+    if(found){
+      resolvedName=found;
+      settings=models[found];
+    }
+  }
+
+  if(!settings){
+    modelStatus.textContent="Локальная модель не найдена: "+modelName;
+    if(modelPickerStatus)modelPickerStatus.textContent="Локальная модель не найдена: "+modelName;
+    return false;
+  }
+
+  applySettings(settings);
+  currentGitHubModelId="";
+  modelNameInput.value=resolvedName;
+  if(modelPicker)modelPicker.classList.remove("active");
+  modelStatus.textContent="Загружена локальная модель: "+resolvedName;
+  return true;
+}
+
+function loadLocalModelFromQuery(){
+  const params=new URLSearchParams(location.search);
+  const localParam=params.get("local");
+  if(!localParam)return false;
+  return loadLocalModelByName(localParam);
+}
+
+function makeLocalModelLaunchLink(name){
+  const modelName=String(name||modelNameInput.value||"").trim();
+  const cleanUrl=location.origin+location.pathname;
+  return cleanUrl+"?local="+encodeURIComponent(modelName);
+}
+
 async function showModelPickerFromIndex(){
   if(!modelPicker || !modelPickerList || !modelPickerStatus)return false;
 
@@ -1722,7 +1793,21 @@ async function showModelPickerFromIndex(){
     const response=await fetch("models/index.json?v="+Date.now()+"_"+Math.random().toString(36).slice(2),{cache:"no-store"});
 
     if(!response.ok){
-      modelPickerStatus.textContent="models/index.json не найден. Можно импортировать присланный JSON-файл модели.";
+      const localModels=loadModels();
+      const localNames=Object.keys(localModels).sort((a,b)=>a.localeCompare(b,"ru"));
+      if(localNames.length){
+        localNames.forEach(name=>{
+          const btn=document.createElement("button");
+          btn.type="button";
+          btn.className="model-choice";
+          btn.textContent=name;
+          btn.onclick=()=>loadLocalModelByName(name);
+          modelPickerList.appendChild(btn);
+        });
+        modelPickerStatus.textContent="models/index.json не найден. Показаны локальные модели.";
+      }else{
+        modelPickerStatus.textContent="models/index.json не найден. Можно импортировать присланный JSON-файл модели.";
+      }
       if(modelPickerImportBox)modelPickerImportBox.style.display="block";
       return false;
     }
@@ -1757,7 +1842,35 @@ async function showModelPickerFromIndex(){
       modelPickerList.appendChild(btn);
     });
 
-    modelPickerStatus.textContent="Доступно моделей: "+items.length;
+    const localModels=loadModels();
+    const localNames=Object.keys(localModels).sort((a,b)=>a.localeCompare(b,"ru"));
+
+    if(localNames.length){
+      const title=document.createElement("div");
+      title.style.margin="14px 0 4px";
+      title.style.fontWeight="bold";
+      title.textContent="Локальные модели этого устройства";
+      modelPickerList.appendChild(title);
+
+      localNames.forEach(name=>{
+        const btn=document.createElement("button");
+        btn.type="button";
+        btn.className="model-choice";
+        btn.textContent=name;
+
+        const small=document.createElement("small");
+        small.textContent="Локальная модель";
+        btn.appendChild(small);
+
+        btn.onclick=()=>{
+          loadLocalModelByName(name);
+        };
+
+        modelPickerList.appendChild(btn);
+      });
+    }
+
+    modelPickerStatus.textContent="Доступно моделей GitHub: "+items.length+", локальных: "+localNames.length;
     return true;
   }catch(e){
     modelPickerStatus.textContent="Ошибка загрузки списка моделей. Можно импортировать присланный JSON-файл модели.";
@@ -1902,9 +2015,12 @@ async function initClockApp(){
 
   const loadedFromHash=loadSettingsFromURL();
   if(!loadedFromHash){
-    const loadedFromQuery=await loadModelFromGitHubQuery();
-    if(!loadedFromQuery){
-      await showModelPickerFromIndex();
+    const loadedFromLocal=loadLocalModelFromQuery();
+    if(!loadedFromLocal){
+      const loadedFromQuery=await loadModelFromGitHubQuery();
+      if(!loadedFromQuery){
+        await showModelPickerFromIndex();
+      }
     }
   }
 
