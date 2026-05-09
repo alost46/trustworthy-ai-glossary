@@ -1457,18 +1457,39 @@ document.getElementById("saveModel").onclick=()=>{
 };
 
 document.getElementById("createLocalLink").onclick=()=>{
-  const name=(modelNameInput.value || currentGitHubModelId || "").trim();
-  if(!name){
+  const rawName=(modelNameInput.value || currentGitHubModelId || "").trim();
+
+  if(!rawName){
     showModelStatus("Сначала сохраните или загрузите локальную модель.",null);
     return;
   }
 
-  const url=makeLocalModelLaunchLink ? makeLocalModelLaunchLink(name) : (location.origin+location.pathname+"?local="+encodeURIComponent(name));
-  navigator.clipboard.writeText(url).then(()=>{
-    showModelStatus("✅ Ссылка локального запуска скопирована: "+name,"createLocalLink");
-  }).catch(()=>{
-    prompt("Ссылка для локальной модели:",url);
-  });
+  const localName=makeLocalModelName(rawName);
+  const models=loadModels();
+
+  if(!models[localName]){
+    models[localName]=collectCurrentSettings();
+    saveModels(models);
+    modelNameInput.value=localName;
+    currentGitHubModelId="";
+    renderModelList();
+  }
+
+  const url=makeLocalModelLaunchLink(localName);
+
+  const message="Ссылка локального запуска для "+localName+":";
+  showModelStatus("✅ Ссылка создана для локальной модели: "+localName,"createLocalLink");
+
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(url).then(()=>{
+      showModelStatus("✅ Ссылка локального запуска скопирована: "+localName,"createLocalLink");
+      prompt(message,url);
+    }).catch(()=>{
+      prompt(message,url);
+    });
+  }else{
+    prompt(message,url);
+  }
 };
 
 document.getElementById("exportLocalModel").onclick=()=>{
@@ -1906,31 +1927,31 @@ function normalizeModelIndexItem(item){
   return null;
 }
 
+
 function loadLocalModelByName(name){
-  const modelName=String(name||"").trim();
-  if(!modelName)return false;
+  const requestedName=String(name||"").trim();
+  if(!requestedName)return false;
 
   const models=loadModels();
-  const exact=models[modelName];
+  const names=Object.keys(models);
 
-  let resolvedName=modelName;
-  let settings=exact;
-
-  if(!settings){
-    const names=Object.keys(models);
-    const found=names.find(n=>n.toLowerCase()===modelName.toLowerCase());
-    if(found){
-      resolvedName=found;
-      settings=models[found];
-    }
+  let resolvedName=names.find(n=>n===requestedName);
+  if(!resolvedName){
+    resolvedName=names.find(n=>n.toLowerCase()===requestedName.toLowerCase());
   }
 
-  if(!settings){
-    modelStatus.textContent="Локальная модель не найдена: "+modelName;
-    if(modelPickerStatus)modelPickerStatus.textContent="Локальная модель не найдена: "+modelName;
+  if(!resolvedName && !/L$/i.test(requestedName)){
+    const withL=requestedName+"L";
+    resolvedName=names.find(n=>n===withL) || names.find(n=>n.toLowerCase()===withL.toLowerCase());
+  }
+
+  if(!resolvedName){
+    modelStatus.textContent="Локальная модель не найдена: "+requestedName;
+    if(modelPickerStatus)modelPickerStatus.textContent="Локальная модель не найдена: "+requestedName;
     return false;
   }
 
+  const settings=models[resolvedName];
   applySettings(settings);
   currentGitHubModelId="";
   modelNameInput.value=resolvedName;
@@ -1947,9 +1968,8 @@ function loadLocalModelFromQuery(){
 }
 
 function makeLocalModelLaunchLink(name){
-  const modelName=String(name||modelNameInput.value||"").trim();
-  const cleanUrl=location.origin+location.pathname;
-  return cleanUrl+"?local="+encodeURIComponent(modelName);
+  const modelName=makeLocalModelName(String(name||modelNameInput.value||"").trim());
+  return location.origin+location.pathname+"?local="+encodeURIComponent(modelName);
 }
 
 async function showModelPickerFromIndex(){
