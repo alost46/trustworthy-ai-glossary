@@ -149,6 +149,9 @@ small{display:block;color:var(--muted);margin-top:4px;line-height:1.35}
           <button type="button" class="done-btn secondary-btn" id="exportLocalModel" style="margin-top:8px;background:#16a34a;">Export LOCAL MODEL JSON</button>
           <button type="button" class="done-btn secondary-btn" id="importLocalModelButton" style="margin-top:8px;background:#0891b2;">Import LOCAL MODEL JSON</button>
           <input type="file" id="importLocalModelFile" accept=".json,application/json" style="display:none">
+          <button type="button" class="done-btn secondary-btn" id="backupAllLocalData" style="margin-top:8px;background:#0f766e;">Backup ALL LOCAL DATA</button>
+          <button type="button" class="done-btn secondary-btn" id="restoreAllLocalDataButton" style="margin-top:8px;background:#9333ea;">Restore ALL LOCAL DATA</button>
+          <input type="file" id="restoreAllLocalDataFile" accept=".json,application/json" style="display:none">
           <button type="button" class="done-btn secondary-btn" id="exportHtml" style="margin-top:8px;">Export ENGINE HTML</button>
           <button type="button" class="done-btn secondary-btn" id="exportLink" style="margin-top:8px;background:#059669;">Export LINK</button>
           <button type="button" class="done-btn secondary-btn" id="exportModelJson" style="margin-top:8px;background:#7c3aed;">Export MODEL JSON</button>
@@ -156,7 +159,7 @@ small{display:block;color:var(--muted);margin-top:4px;line-height:1.35}
           <button type="button" class="done-btn secondary-btn" id="clearDeviceOverride" style="margin-top:8px;background:#b45309;">Сбросить настройку устройства</button>
         </div>
       </div>
-      <small id="modelStatus">Локальные модели этого устройства появятся ниже. Для обмена: Export ENGINE HTML + Export LOCAL MODEL JSON.</small>
+      <small id="modelStatus">Локальные модели этого устройства появятся ниже. Для обмена: Export ENGINE HTML + Export LOCAL MODEL JSON. Для страховки: Backup ALL LOCAL DATA.</small>
       <div class="model-list" id="modelList"></div>
     </div>
 
@@ -1257,6 +1260,7 @@ const modelPickerClose=document.getElementById("modelPickerClose");
 const modelPickerExit=document.getElementById("modelPickerExit");
 const modelPickerStatus=document.getElementById("modelPickerStatus");
 const importLocalModelFile=document.getElementById("importLocalModelFile");
+const restoreAllLocalDataFile=document.getElementById("restoreAllLocalDataFile");
 
 function makeLocalModelObject(name,settings){
   const rawName=makeLocalModelName((name || modelNameInput.value || "local-clock-model").trim());
@@ -1280,6 +1284,76 @@ function downloadJsonObject(obj,filename){
   a.click();
   a.remove();
   URL.revokeObjectURL(url);
+}
+
+function collectDeviceOverridesForBackup(){
+  const overrides={};
+
+  try{
+    for(let i=0;i<localStorage.length;i++){
+      const key=localStorage.key(i);
+      if(key && key.startsWith("clock_device_override_")){
+        overrides[key]=JSON.parse(localStorage.getItem(key));
+      }
+    }
+  }catch(e){
+    console.log("Device override backup error:",e);
+  }
+
+  return overrides;
+}
+
+function makeAllLocalDataBackupObject(){
+  return {
+    schema:"ClockViewerLocalBackup/v1",
+    createdAt:new Date().toISOString(),
+    engine:"ClockViewerAndroid.html",
+    models:loadModels(),
+    deviceOverrides:collectDeviceOverridesForBackup()
+  };
+}
+
+function backupAllLocalData(){
+  const backup=makeAllLocalDataBackupObject();
+  const modelCount=Object.keys(backup.models||{}).length;
+  const overrideCount=Object.keys(backup.deviceOverrides||{}).length;
+
+  downloadJsonObject(backup,"clock_local_backup.json");
+  showModelStatus("✅ Backup создан: моделей "+modelCount+", настроек устройства "+overrideCount+". Файл: clock_local_backup.json","backupAllLocalData");
+}
+
+function restoreAllLocalDataFromObject(obj){
+  if(!obj || typeof obj!=="object"){
+    showModelStatus("Ошибка Restore: это не JSON-объект.",null);
+    return;
+  }
+
+  const models=obj.models && typeof obj.models==="object" ? obj.models : null;
+  const deviceOverrides=obj.deviceOverrides && typeof obj.deviceOverrides==="object" ? obj.deviceOverrides : {};
+
+  if(!models){
+    showModelStatus("Ошибка Restore: в файле нет блока models.",null);
+    return;
+  }
+
+  const currentModels=loadModels();
+  const mergedModels={...currentModels,...models};
+  saveModels(mergedModels);
+
+  let restoredOverrides=0;
+  Object.keys(deviceOverrides).forEach(key=>{
+    if(key.startsWith("clock_device_override_")){
+      try{
+        localStorage.setItem(key,JSON.stringify(deviceOverrides[key]));
+        restoredOverrides++;
+      }catch(e){
+        console.log("Device override restore error:",key,e);
+      }
+    }
+  });
+
+  renderModelList();
+  showModelStatus("✅ Restore выполнен: моделей "+Object.keys(models).length+", настроек устройства "+restoredOverrides+".", "restoreAllLocalDataButton");
 }
 
 function saveLocalModelByName(name,settings){
@@ -1349,6 +1423,34 @@ importLocalModelFile.onchange=async e=>{
     importLocalModelFile.value="";
   }
 };
+
+document.getElementById("backupAllLocalData").onclick=()=>{
+  backupAllLocalData();
+};
+
+document.getElementById("restoreAllLocalDataButton").onclick=()=>{
+  if(restoreAllLocalDataFile){
+    restoreAllLocalDataFile.click();
+  }
+};
+
+if(restoreAllLocalDataFile){
+  restoreAllLocalDataFile.onchange=async e=>{
+    const file=e.target.files && e.target.files[0];
+    if(!file)return;
+
+    try{
+      const raw=await file.text();
+      const obj=JSON.parse(raw);
+      restoreAllLocalDataFromObject(obj);
+    }catch(err){
+      console.log("Restore all local data error:",err);
+      showModelStatus("Ошибка Restore: не удалось прочитать backup-файл.",null);
+    }finally{
+      restoreAllLocalDataFile.value="";
+    }
+  };
+}
 
 document.getElementById("saveDeviceOverride").onclick=()=>{
   saveDeviceOverride(currentGitHubModelId || modelNameInput.value);
