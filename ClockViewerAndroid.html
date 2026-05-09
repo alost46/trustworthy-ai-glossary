@@ -1344,11 +1344,20 @@ function collectDeviceOverridesForBackup(){
 }
 
 function makeAllLocalDataBackupObject(){
+  const allModels=loadModels();
+  const localOnlyModels={};
+
+  Object.keys(allModels).forEach(name=>{
+    if(isLocalModelName(name)){
+      localOnlyModels[name]=allModels[name];
+    }
+  });
+
   return {
     schema:"ClockViewerLocalBackup/v1",
     createdAt:new Date().toISOString(),
     engine:"ClockViewerAndroid.html",
-    models:loadModels(),
+    models:localOnlyModels,
     deviceOverrides:collectDeviceOverridesForBackup()
   };
 }
@@ -1377,7 +1386,14 @@ function restoreAllLocalDataFromObject(obj){
   }
 
   const currentModels=loadModels();
-  const mergedModels={...currentModels,...models};
+  const normalizedModels={};
+
+  Object.keys(models).forEach(name=>{
+    const localName=makeLocalModelName(name);
+    normalizedModels[localName]=models[name];
+  });
+
+  const mergedModels={...currentModels,...normalizedModels};
   saveModels(mergedModels);
 
   let restoredOverrides=0;
@@ -1393,7 +1409,7 @@ function restoreAllLocalDataFromObject(obj){
   });
 
   renderModelList();
-  showModelStatus("✅ Restore выполнен: моделей "+Object.keys(models).length+", настроек устройства "+restoredOverrides+".", "restoreAllLocalDataButton");
+  showModelStatus("✅ Restore выполнен: локальных моделей "+Object.keys(normalizedModels).length+", настроек устройства "+restoredOverrides+".", "restoreAllLocalDataButton");
 }
 
 function saveLocalModelByName(name,settings){
@@ -1537,7 +1553,9 @@ if(modelPickerExit){
 
 function renderModelList(){
   const models=loadModels();
-  const names=Object.keys(models).sort((a,b)=>a.localeCompare(b,"ru"));
+  const names=Object.keys(models)
+    .filter(isLocalModelName)
+    .sort((a,b)=>a.localeCompare(b,"ru"));
   modelList.innerHTML="";
 
   if(!names.length){
@@ -1947,7 +1965,9 @@ async function showModelPickerFromIndex(){
 
     if(!response.ok){
       const localModels=loadModels();
-      const localNames=Object.keys(localModels).sort((a,b)=>a.localeCompare(b,"ru"));
+      const localNames=Object.keys(localModels)
+      .filter(isLocalModelName)
+      .sort((a,b)=>a.localeCompare(b,"ru"));
       if(localNames.length){
         localNames.forEach(name=>{
           const btn=document.createElement("button");
@@ -1996,7 +2016,9 @@ async function showModelPickerFromIndex(){
     });
 
     const localModels=loadModels();
-    const localNames=Object.keys(localModels).sort((a,b)=>a.localeCompare(b,"ru"));
+    const localNames=Object.keys(localModels)
+      .filter(isLocalModelName)
+      .sort((a,b)=>a.localeCompare(b,"ru"));
 
     if(localNames.length){
       const title=document.createElement("div");
@@ -2066,6 +2088,10 @@ function loadSettingsFromURL(){
 function makeLocalModelName(name){
   const raw=String(name||"local-clock-model").trim() || "local-clock-model";
   return /L$/i.test(raw) ? raw : raw+"L";
+}
+
+function isLocalModelName(name){
+  return /L$/i.test(String(name||"").trim());
 }
 
 function installLocalModelButtonHandlers(){
