@@ -111,6 +111,11 @@ small{display:block;color:var(--muted);margin-top:4px;line-height:1.35}
     <h2 id="modelPickerTitle">Выбор модели часов</h2>
     <p>Выберите модель, которую нужно загрузить с GitHub.</p>
     <div class="model-picker-list" id="modelPickerList"></div>
+    <div id="modelPickerImportBox" style="display:none;margin-top:12px;">
+      <button type="button" class="done-btn secondary-btn" id="modelPickerImportJson" style="background:#0891b2;">Import LOCAL MODEL JSON</button>
+      <small>Если вместе с HTML вам прислали JSON-модель, импортируйте её здесь. Полный конструктор открывается длительным нажатием на циферблат.</small>
+    </div>
+    <button type="button" class="done-btn secondary-btn" id="modelPickerClose" style="margin-top:8px;">Закрыть</button>
     <div class="model-picker-status" id="modelPickerStatus">Загружаю список моделей…</div>
   </div>
 </div>
@@ -132,14 +137,14 @@ small{display:block;color:var(--muted);margin-top:4px;line-height:1.35}
           <button type="button" class="done-btn secondary-btn" id="exportLocalModel" style="margin-top:8px;background:#16a34a;">Export LOCAL MODEL JSON</button>
           <button type="button" class="done-btn secondary-btn" id="importLocalModelButton" style="margin-top:8px;background:#0891b2;">Import LOCAL MODEL JSON</button>
           <input type="file" id="importLocalModelFile" accept=".json,application/json" style="display:none">
-          <button type="button" class="done-btn secondary-btn" id="exportHtml" style="margin-top:8px;">Export HTML</button>
+          <button type="button" class="done-btn secondary-btn" id="exportHtml" style="margin-top:8px;">Export ENGINE HTML</button>
           <button type="button" class="done-btn secondary-btn" id="exportLink" style="margin-top:8px;background:#059669;">Export LINK</button>
           <button type="button" class="done-btn secondary-btn" id="exportModelJson" style="margin-top:8px;background:#7c3aed;">Export MODEL JSON</button>
           <button type="button" class="done-btn secondary-btn" id="saveDeviceOverride" style="margin-top:8px;background:#0ea5e9;">Сохранить настройку этого устройства</button>
           <button type="button" class="done-btn secondary-btn" id="clearDeviceOverride" style="margin-top:8px;background:#b45309;">Сбросить настройку устройства</button>
         </div>
       </div>
-      <small id="modelStatus">Локальные модели этого устройства появятся ниже. Их можно экспортировать и импортировать.</small>
+      <small id="modelStatus">Локальные модели этого устройства появятся ниже. Для обмена: Export ENGINE HTML + Export LOCAL MODEL JSON.</small>
       <div class="model-list" id="modelList"></div>
     </div>
 
@@ -1234,11 +1239,14 @@ const modelStatus=document.getElementById("modelStatus");
 const modelList=document.getElementById("modelList");
 const modelPicker=document.getElementById("modelPicker");
 const modelPickerList=document.getElementById("modelPickerList");
+const modelPickerImportBox=document.getElementById("modelPickerImportBox");
+const modelPickerImportJson=document.getElementById("modelPickerImportJson");
+const modelPickerClose=document.getElementById("modelPickerClose");
 const modelPickerStatus=document.getElementById("modelPickerStatus");
 const importLocalModelFile=document.getElementById("importLocalModelFile");
 
 function makeLocalModelObject(name,settings){
-  const rawName=(name || modelNameInput.value || "local-clock-model").trim();
+  const rawName=makeLocalModelName((name || modelNameInput.value || "local-clock-model").trim());
   return {
     schema:"ClockViewerLocalModel/v1",
     id:normalizeModelId(rawName),
@@ -1262,12 +1270,13 @@ function downloadJsonObject(obj,filename){
 }
 
 function saveLocalModelByName(name,settings){
-  const rawName=(name || modelNameInput.value || "").trim();
-  if(!rawName){
+  const baseName=(name || modelNameInput.value || "").trim();
+  if(!baseName){
     modelStatus.textContent="Введите имя локальной модели.";
     return false;
   }
 
+  const rawName=makeLocalModelName(baseName);
   const models=loadModels();
   models[rawName]=settings || collectCurrentSettings();
   saveModels(models);
@@ -1279,7 +1288,7 @@ function saveLocalModelByName(name,settings){
 }
 
 function exportCurrentLocalModel(){
-  const rawName=(modelNameInput.value || currentGitHubModelId || "local-clock-model").trim();
+  const rawName=makeLocalModelName((modelNameInput.value || currentGitHubModelId || "local-clock-model").trim());
   const obj=makeLocalModelObject(rawName,collectCurrentSettings());
   downloadJsonObject(obj,safeFileName(obj.name || obj.id)+".json");
   modelStatus.textContent="Экспортирована локальная модель: "+(obj.name || obj.id);
@@ -1335,6 +1344,20 @@ document.getElementById("saveDeviceOverride").onclick=()=>{
 document.getElementById("clearDeviceOverride").onclick=()=>{
   clearDeviceOverride(currentGitHubModelId || modelNameInput.value);
 };
+
+if(modelPickerImportJson){
+  modelPickerImportJson.onclick=()=>{
+    if(importLocalModelFile){
+      importLocalModelFile.click();
+    }
+  };
+}
+
+if(modelPickerClose){
+  modelPickerClose.onclick=()=>{
+    if(modelPicker)modelPicker.classList.remove("active");
+  };
+}
 
 function renderModelList(){
   const models=loadModels();
@@ -1447,20 +1470,45 @@ function safeFileName(name){
   return String(name||"clock_model").trim().replace(/[\\/:*?"<>|]+/g,"_").replace(/\s+/g,"_") || "clock_model";
 }
 
-document.getElementById("exportHtml").onclick=()=>{
-  const name=modelNameInput.value.trim()||"clock_model";
-  const settings=collectCurrentSettings();
-  const html=makeStandaloneClockHTML(settings);
-  const blob=new Blob([html],{type:"text/html;charset=utf-8"});
-  const url=URL.createObjectURL(blob);
-  const a=document.createElement("a");
-  a.href=url;
-  a.download=safeFileName(name)+".html";
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  URL.revokeObjectURL(url);
-  modelStatus.textContent="Экспортирован самостоятельный HTML-файл: "+safeFileName(name)+".html";
+document.getElementById("exportHtml").onclick=async ()=>{
+  const filename="ClockViewerAndroid.html";
+
+  async function downloadEngineHtml(htmlText){
+    const blob=new Blob([htmlText],{type:"text/html;charset=utf-8"});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement("a");
+    a.href=url;
+    a.download=filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+    modelStatus.textContent="Экспортирован универсальный движок: "+filename;
+  }
+
+  try{
+    const cleanUrl=location.origin+location.pathname+"?v="+Date.now();
+    const response=await fetch(cleanUrl,{cache:"no-store"});
+
+    if(response.ok){
+      const htmlText=await response.text();
+      await downloadEngineHtml(htmlText);
+      return;
+    }
+  }catch(e){
+    console.log("Не удалось скачать чистый HTML движка, использую текущий DOM:",e);
+  }
+
+  const clone=document.documentElement.cloneNode(true);
+
+  const activePanel=clone.querySelector("#settingsPanel");
+  if(activePanel)activePanel.classList.remove("active");
+
+  const activePicker=clone.querySelector("#modelPicker");
+  if(activePicker)activePicker.classList.remove("active");
+
+  const htmlText="<!DOCTYPE html>\n"+clone.outerHTML;
+  await downloadEngineHtml(htmlText);
 };
 
 function encodeSettingsForLink(settings){
@@ -1667,13 +1715,15 @@ async function showModelPickerFromIndex(){
 
   modelPicker.classList.add("active");
   modelPickerList.innerHTML="";
+  if(modelPickerImportBox)modelPickerImportBox.style.display="none";
   modelPickerStatus.textContent="Загружаю список моделей…";
 
   try{
     const response=await fetch("models/index.json?v="+Date.now()+"_"+Math.random().toString(36).slice(2),{cache:"no-store"});
 
     if(!response.ok){
-      modelPickerStatus.textContent="Не удалось загрузить models/index.json. Проверьте, что файл есть в GitHub.";
+      modelPickerStatus.textContent="models/index.json не найден. Можно импортировать присланный JSON-файл модели.";
+      if(modelPickerImportBox)modelPickerImportBox.style.display="block";
       return false;
     }
 
@@ -1683,7 +1733,8 @@ async function showModelPickerFromIndex(){
       .filter(Boolean);
 
     if(!items.length){
-      modelPickerStatus.textContent="В models/index.json нет моделей.";
+      modelPickerStatus.textContent="В models/index.json нет моделей. Можно импортировать присланный JSON-файл модели.";
+      if(modelPickerImportBox)modelPickerImportBox.style.display="block";
       return false;
     }
 
@@ -1709,7 +1760,8 @@ async function showModelPickerFromIndex(){
     modelPickerStatus.textContent="Доступно моделей: "+items.length;
     return true;
   }catch(e){
-    modelPickerStatus.textContent="Ошибка загрузки списка моделей.";
+    modelPickerStatus.textContent="Ошибка загрузки списка моделей. Можно импортировать присланный JSON-файл модели.";
+    if(modelPickerImportBox)modelPickerImportBox.style.display="block";
     console.log("Ошибка загрузки models/index.json:",e);
     return false;
   }
@@ -1744,7 +1796,104 @@ function loadSettingsFromURL(){
   }
 }
 
+
+function makeLocalModelName(name){
+  const raw=String(name||"local-clock-model").trim() || "local-clock-model";
+  return /L$/i.test(raw) ? raw : raw+"L";
+}
+
+function installLocalModelButtonHandlers(){
+  const saveBtn=document.getElementById("saveModel");
+  const exportBtn=document.getElementById("exportLocalModel");
+  const importBtn=document.getElementById("importLocalModelButton");
+  const importFile=document.getElementById("importLocalModelFile");
+
+  if(saveBtn){
+    saveBtn.onclick=()=>{
+      const baseName=(modelNameInput.value || "").trim();
+
+      if(!baseName){
+        modelStatus.textContent="Введите имя локальной модели.";
+        return;
+      }
+
+      const name=makeLocalModelName(baseName);
+
+      const models=loadModels();
+      models[name]=collectCurrentSettings();
+      saveModels(models);
+
+      currentGitHubModelId="";
+      modelNameInput.value=name;
+      modelStatus.textContent="Локальная модель сохранена на этом устройстве: "+name;
+      renderModelList();
+    };
+  }
+
+  if(exportBtn){
+    exportBtn.onclick=()=>{
+      const name=makeLocalModelName((modelNameInput.value || currentGitHubModelId || "local-clock-model").trim());
+      const obj={
+        schema:"ClockViewerLocalModel/v1",
+        id:normalizeModelId(name),
+        name:name,
+        savedAt:new Date().toISOString(),
+        settings:collectCurrentSettings()
+      };
+
+      const json=JSON.stringify(obj,null,2);
+      const blob=new Blob([json],{type:"application/json;charset=utf-8"});
+      const url=URL.createObjectURL(blob);
+      const a=document.createElement("a");
+      a.href=url;
+      a.download=safeFileName(name)+".json";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+
+      modelStatus.textContent="Экспортирована локальная модель: "+name;
+    };
+  }
+
+  if(importBtn && importFile){
+    importBtn.onclick=()=>{
+      importFile.click();
+    };
+
+    importFile.onchange=async e=>{
+      const file=e.target.files && e.target.files[0];
+      if(!file)return;
+
+      try{
+        const raw=await file.text();
+        const obj=JSON.parse(raw);
+        const settings=obj.settings || obj;
+        const name=makeLocalModelName((obj.name || obj.id || "imported-clock-model").trim());
+
+        applySettings(settings);
+
+        const models=loadModels();
+        models[name]=collectCurrentSettings();
+        saveModels(models);
+
+        currentGitHubModelId="";
+        modelNameInput.value=name;
+        modelStatus.textContent="Импортирована и сохранена локальная модель: "+name;
+        if(modelPicker)modelPicker.classList.remove("active");
+        renderModelList();
+      }catch(err){
+        console.log("Local model import error:",err);
+        modelStatus.textContent="Ошибка импорта локальной модели.";
+      }finally{
+        importFile.value="";
+      }
+    };
+  }
+}
+
 async function initClockApp(){
+  installLocalModelButtonHandlers();
   buildHexTable();
   updatePreview();
   renderCustomSvgPreview();
