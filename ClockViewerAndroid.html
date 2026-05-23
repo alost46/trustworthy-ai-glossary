@@ -185,7 +185,6 @@ small{display:block;color:var(--muted);margin-top:4px;line-height:1.35}
           <button type="button" class="done-btn secondary-btn" id="exportHtml">Export ENGINE HTML</button>
           <button type="button" class="done-btn secondary-btn" id="exportLink" style="background:#059669;">Export LINK</button>
           <button type="button" class="done-btn secondary-btn" id="exportModelJson" style="background:#7c3aed;">Export MODEL JSON</button>
-          <button type="button" class="done-btn secondary-btn" id="exportLauncherHtml" style="background:#ea580c;">Export LAUNCHER HTML</button>
         </div>
       </div>
 
@@ -1760,66 +1759,6 @@ document.getElementById("exportModelJson").onclick=()=>{
   modelStatus.textContent="Экспортирован MODEL JSON: "+model.id+".json";
 };
 
-function escapeHtmlText(value){
-  return String(value||"")
-    .replace(/&/g,"&amp;")
-    .replace(/</g,"&lt;")
-    .replace(/>/g,"&gt;")
-    .replace(/"/g,"&quot;");
-}
-
-function makeLauncherHtmlObject(){
-  const rawName=(modelNameInput.value || currentGitHubModelId || "clock-model").trim();
-  const isLocal=isLocalModelName(rawName);
-  const modelId=isLocal ? makeLocalModelName(rawName) : normalizeModelId(currentGitHubModelId || rawName);
-  const title=isLocal ? modelId : (rawName || modelId);
-  const target=isLocal
-    ? "ClockViewerAndroid.html?local="+encodeURIComponent(modelId)
-    : "ClockViewerAndroid.html?model="+encodeURIComponent(modelId);
-  const fileName=isLocal ? "clock_local_"+safeFileName(modelId)+".html" : "clock_"+safeFileName(modelId)+".html";
-
-  const htmlText="<!DOCTYPE html>\n"+
-`<html lang="ru">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>${escapeHtmlText(title)} Launcher</title>
-<meta http-equiv="refresh" content="0; url=${escapeHtmlText(target)}">
-<script>
-  location.replace(${JSON.stringify(target)});
-<\/script>
-</head>
-<body>
-  Loading ${escapeHtmlText(title)}...
-  <p><a href="${escapeHtmlText(target)}">Open clock</a></p>
-</body>
-</html>
-`;
-
-  return {fileName,target,htmlText,title,isLocal,modelId};
-}
-
-function downloadTextFile(text,filename,mimeType){
-  const blob=new Blob([text],{type:mimeType || "text/plain;charset=utf-8"});
-  const url=URL.createObjectURL(blob);
-  const a=document.createElement("a");
-  a.href=url;
-  a.download=filename;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  URL.revokeObjectURL(url);
-}
-
-const exportLauncherHtmlButton=document.getElementById("exportLauncherHtml");
-if(exportLauncherHtmlButton){
-  exportLauncherHtmlButton.onclick=()=>{
-    const launcher=makeLauncherHtmlObject();
-    downloadTextFile(launcher.htmlText,launcher.fileName,"text/html;charset=utf-8");
-    showModelStatus("Экспортирован LAUNCHER HTML: "+launcher.fileName+" → "+launcher.target,"exportLauncherHtml");
-  };
-}
-
 function showModelStatus(message,buttonId){
   modelStatus.textContent=message;
   modelStatus.classList.remove("status-flash");
@@ -2028,9 +1967,31 @@ function loadLocalModelFromQuery(){
   return loadLocalModelByName(localParam);
 }
 
-function makeLocalModelLaunchLink(name){
+function makeLauncherUrl(fileName,query){
+  const basePath=location.pathname.replace(/[^\/]*$/,fileName);
+  return location.origin+basePath+(query||"");
+}
+
+function makeGitHubModelLauncherUrl(modelId){
+  const id=normalizeModelId(modelId);
+  return makeLauncherUrl("clock_"+id+".html","");
+}
+
+function makeLocalModelLauncherUrl(name){
   const modelName=makeLocalModelName(String(name||modelNameInput.value||"").trim());
-  return location.origin+location.pathname+"?local="+encodeURIComponent(modelName);
+  return makeLauncherUrl("clock_local.html","?local="+encodeURIComponent(modelName));
+}
+
+function openGitHubModelLauncher(modelId){
+  window.location.href=makeGitHubModelLauncherUrl(modelId);
+}
+
+function openLocalModelLauncher(name){
+  window.location.href=makeLocalModelLauncherUrl(name);
+}
+
+function makeLocalModelLaunchLink(name){
+  return makeLocalModelLauncherUrl(name);
 }
 
 
@@ -2068,7 +2029,7 @@ function showLocalModelsPanel(){
     btn.appendChild(small);
 
     btn.onclick=()=>{
-      loadLocalModelByName(name);
+      openLocalModelLauncher(name);
     };
 
     modelPickerList.appendChild(btn);
@@ -2105,7 +2066,7 @@ async function showModelPickerFromIndex(){
           btn.type="button";
           btn.className="model-choice";
           btn.textContent=name;
-          btn.onclick=()=>loadLocalModelByName(name);
+          btn.onclick=()=>openLocalModelLauncher(name);
           modelPickerList.appendChild(btn);
         });
         modelPickerStatus.textContent="models/index.json не найден. Показаны локальные модели.";
@@ -2140,7 +2101,7 @@ async function showModelPickerFromIndex(){
       }
 
       btn.onclick=async ()=>{
-        await loadModelFromGitHubById(item.id,"picker");
+        openGitHubModelLauncher(item.id);
       };
 
       modelPickerList.appendChild(btn);
@@ -2169,7 +2130,7 @@ async function showModelPickerFromIndex(){
         btn.appendChild(small);
 
         btn.onclick=()=>{
-          loadLocalModelByName(name);
+          openLocalModelLauncher(name);
         };
 
         modelPickerList.appendChild(btn);
