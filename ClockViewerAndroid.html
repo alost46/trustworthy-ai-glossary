@@ -551,6 +551,7 @@ let customSvgSymbolImages=[];
 let customSvgCacheKey="";
 
 const STORAGE_KEY="clock_constructor_models_v6";
+const AUTO_START_LOCAL_KEY="clock_autostart_local_model";
 const VIEWER_URL="https://alost46.github.io/trustworthy-ai-glossary/ClockViewerAndroid.html";
 let currentGitHubModelId="";
 
@@ -1278,6 +1279,35 @@ function saveModels(models){
   localStorage.setItem(STORAGE_KEY,JSON.stringify(models));
 }
 
+function setAutostartLocalModel(name){
+  const localName=makeLocalModelName(name);
+  try{
+    localStorage.setItem(AUTO_START_LOCAL_KEY,localName);
+  }catch(e){
+    console.log("Не удалось сохранить автозапуск локальной модели:",e);
+  }
+  return localName;
+}
+
+function getAutostartLocalModel(){
+  try{
+    return localStorage.getItem(AUTO_START_LOCAL_KEY) || "";
+  }catch(e){
+    return "";
+  }
+}
+
+function clearAutostartLocalModel(){
+  try{
+    localStorage.removeItem(AUTO_START_LOCAL_KEY);
+  }catch(e){}
+}
+
+function shouldForceModelPicker(){
+  const params=new URLSearchParams(location.search);
+  return params.has("menu") || params.get("start")==="menu" || params.get("picker")==="1";
+}
+
 const modelNameInput=document.getElementById("modelName");
 const modelStatus=document.getElementById("modelStatus");
 const modelList=document.getElementById("modelList");
@@ -1415,6 +1445,7 @@ function saveLocalModelByName(name,settings){
   modelNameInput.value=rawName;
   currentGitHubModelId="";
   setAddressToLocalModel(rawName);
+  setAutostartLocalModel(rawName);
   modelStatus.textContent="Локальная модель сохранена на этом устройстве: "+rawName;
   renderModelList();
   return true;
@@ -1950,6 +1981,7 @@ function loadLocalModelByName(name){
   currentGitHubModelId="";
   modelNameInput.value=resolvedName;
   setAddressToLocalModel(resolvedName);
+  setAutostartLocalModel(resolvedName);
   if(modelPicker)modelPicker.classList.remove("active");
   modelStatus.textContent="Загружена локальная модель: "+resolvedName;
   return true;
@@ -2175,6 +2207,7 @@ function saveCurrentSettingsAsLocalModel(name){
   modelNameInput.value=localName;
   currentGitHubModelId="";
   setAddressToLocalModel(localName);
+  setAutostartLocalModel(localName);
   renderModelList();
   return localName;
 }
@@ -2207,6 +2240,7 @@ function installLocalModelButtonHandlers(){
       currentGitHubModelId="";
       modelNameInput.value=name;
       setAddressToLocalModel(name);
+      setAutostartLocalModel(name);
       modelStatus.textContent="Локальная модель сохранена на этом устройстве: "+name;
       renderModelList();
     };
@@ -2262,6 +2296,7 @@ function installLocalModelButtonHandlers(){
         currentGitHubModelId="";
         modelNameInput.value=name;
         setAddressToLocalModel(name);
+        setAutostartLocalModel(name);
         modelStatus.textContent="Импортирована и сохранена локальная модель: "+name;
         if(modelPicker)modelPicker.classList.remove("active");
         renderModelList();
@@ -2273,6 +2308,22 @@ function installLocalModelButtonHandlers(){
       }
     };
   }
+}
+
+function loadAutostartLocalModel(){
+  if(shouldForceModelPicker())return false;
+
+  const params=new URLSearchParams(location.search);
+  if(location.hash || params.has("local") || params.has("model") || params.has("localpanel"))return false;
+
+  const name=getAutostartLocalModel();
+  if(!name)return false;
+
+  const ok=loadLocalModelByName(name);
+  if(!ok){
+    clearAutostartLocalModel();
+  }
+  return ok;
 }
 
 async function initClockApp(){
@@ -2290,9 +2341,12 @@ async function initClockApp(){
     }else{
       const loadedFromLocal=loadLocalModelFromQuery();
       if(!loadedFromLocal){
-        const loadedFromQuery=await loadModelFromGitHubQuery();
-        if(!loadedFromQuery){
-          await showModelPickerFromIndex();
+        const loadedFromAutostart=loadAutostartLocalModel();
+        if(!loadedFromAutostart){
+          const loadedFromQuery=await loadModelFromGitHubQuery();
+          if(!loadedFromQuery){
+            await showModelPickerFromIndex();
+          }
         }
       }
     }
