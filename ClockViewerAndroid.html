@@ -128,7 +128,7 @@ small{display:block;color:var(--muted);margin-top:4px;line-height:1.35}
   <div class="model-picker-card">
     <button type="button" class="model-picker-exit" id="modelPickerExit" aria-label="Выход">✕</button>
     <h2 id="modelPickerTitle">Выбор модели часов</h2>
-    <p>Выберите модель, которую нужно загрузить с GitHub.</p>
+    <p>Откройте модель или назначьте её стартовой для Android-иконки.</p>
     <div class="model-picker-list" id="modelPickerList"></div>
     <div id="modelPickerImportBox" style="display:none;margin-top:12px;">
       <button type="button" class="done-btn secondary-btn" id="modelPickerImportJson" style="background:#0891b2;">Import LOCAL MODEL JSON</button>
@@ -410,7 +410,12 @@ function isTouchLikeDevice(){
 }
 
 exitButton.onclick=()=>{
-  window.location.href="https://www.google.com/";
+  if(modelPicker && modelPicker.classList.contains("active")){
+    window.location.href="https://www.google.com/";
+    return;
+  }
+
+  openMainModelMenu();
 };
 
 async function toggleFullscreen(){
@@ -452,12 +457,11 @@ function arrangeTopButtons(){
 
 arrangeTopButtons();
 
-/* Production mode: service worker включён.
-   Это нужно Android Chrome для нормальной установки на главный экран. */
+/* Production/PWA mode: service worker stays registered.
+   Android installation uses manifest + service worker + start_url. */
 if("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost")){
   window.addEventListener("load",()=>{
     navigator.serviceWorker.register("clock_service_worker.js")
-      .then(()=>console.log("Service worker registered."))
       .catch(e=>console.log("Service worker registration error:",e));
   });
 }
@@ -551,7 +555,7 @@ let customSvgSymbolImages=[];
 let customSvgCacheKey="";
 
 const STORAGE_KEY="clock_constructor_models_v6";
-const AUTO_START_LOCAL_KEY="clock_autostart_local_model";
+const AUTOSTART_LOCAL_MODEL_KEY="clock_autostart_local_model";
 const VIEWER_URL="https://alost46.github.io/trustworthy-ai-glossary/ClockViewerAndroid.html";
 let currentGitHubModelId="";
 
@@ -1279,35 +1283,6 @@ function saveModels(models){
   localStorage.setItem(STORAGE_KEY,JSON.stringify(models));
 }
 
-function setAutostartLocalModel(name){
-  const localName=makeLocalModelName(name);
-  try{
-    localStorage.setItem(AUTO_START_LOCAL_KEY,localName);
-  }catch(e){
-    console.log("Не удалось сохранить автозапуск локальной модели:",e);
-  }
-  return localName;
-}
-
-function getAutostartLocalModel(){
-  try{
-    return localStorage.getItem(AUTO_START_LOCAL_KEY) || "";
-  }catch(e){
-    return "";
-  }
-}
-
-function clearAutostartLocalModel(){
-  try{
-    localStorage.removeItem(AUTO_START_LOCAL_KEY);
-  }catch(e){}
-}
-
-function shouldForceModelPicker(){
-  const params=new URLSearchParams(location.search);
-  return params.has("menu") || params.get("start")==="menu" || params.get("picker")==="1";
-}
-
 const modelNameInput=document.getElementById("modelName");
 const modelStatus=document.getElementById("modelStatus");
 const modelList=document.getElementById("modelList");
@@ -1445,7 +1420,6 @@ function saveLocalModelByName(name,settings){
   modelNameInput.value=rawName;
   currentGitHubModelId="";
   setAddressToLocalModel(rawName);
-  setAutostartLocalModel(rawName);
   modelStatus.textContent="Локальная модель сохранена на этом устройстве: "+rawName;
   renderModelList();
   return true;
@@ -1622,7 +1596,6 @@ function renderModelList(){
       applySettings(fresh[name]);
       currentGitHubModelId="";
       modelNameInput.value=name;
-      setAddressToLocalModel(name);
       modelStatus.textContent="Загружена локальная модель: "+name;
     };
     const deleteBtn=document.createElement("button");
@@ -1868,7 +1841,7 @@ function clearDeviceOverride(modelId){
   showModelStatus("🧹 Настройка этого устройства сброшена для модели: "+id,"clearDeviceOverride");
 }
 
-async function loadModelFromGitHubById(modelId,sourceLabel){
+async function loadModelFromGitHubById(modelId,sourceLabel,makeAutostart=false){
   const normalizedId=normalizeModelId(modelId);
   const modelUrl="models/"+normalizedId+".json?v="+Date.now()+"_"+Math.random().toString(36).slice(2);
 
@@ -1908,6 +1881,10 @@ async function loadModelFromGitHubById(modelId,sourceLabel){
     modelNameInput.value=data.name || data.title || data.id || normalizedId;
     const displayName=data.name || data.title || normalizedId;
     const localName=saveCurrentSettingsAsLocalModel(displayName);
+
+    if(makeAutostart){
+      setAutostartLocalModel(localName);
+    }
 
     modelStatus.textContent=localOverride
       ? "Модель загружена из GitHub, применена локальная настройка устройства и сохранена как локальная: "+localName
@@ -1953,7 +1930,7 @@ function normalizeModelIndexItem(item){
 }
 
 
-function loadLocalModelByName(name){
+function loadLocalModelByName(name,makeAutostart=false){
   const requestedName=String(name||"").trim();
   if(!requestedName)return false;
 
@@ -1981,9 +1958,13 @@ function loadLocalModelByName(name){
   currentGitHubModelId="";
   modelNameInput.value=resolvedName;
   setAddressToLocalModel(resolvedName);
-  setAutostartLocalModel(resolvedName);
+  if(makeAutostart){
+    setAutostartLocalModel(resolvedName);
+  }
   if(modelPicker)modelPicker.classList.remove("active");
-  modelStatus.textContent="Загружена локальная модель: "+resolvedName;
+  modelStatus.textContent=makeAutostart
+    ? "Стартовая локальная модель назначена и загружена: "+resolvedName
+    : "Загружена локальная модель: "+resolvedName;
   return true;
 }
 
@@ -1997,6 +1978,100 @@ function loadLocalModelFromQuery(){
 function makeLocalModelLaunchLink(name){
   const modelName=makeLocalModelName(String(name||modelNameInput.value||"").trim());
   return location.origin+location.pathname+"?local="+encodeURIComponent(modelName);
+}
+
+function setAutostartLocalModel(name){
+  const localName=makeLocalModelName(name);
+  try{
+    localStorage.setItem(AUTOSTART_LOCAL_MODEL_KEY,localName);
+  }catch(e){
+    console.log("Не удалось сохранить стартовую модель:",e);
+  }
+}
+
+function getAutostartLocalModel(){
+  try{
+    return localStorage.getItem(AUTOSTART_LOCAL_MODEL_KEY) || "";
+  }catch(e){
+    return "";
+  }
+}
+
+function clearAutostartLocalModel(){
+  try{
+    localStorage.removeItem(AUTOSTART_LOCAL_MODEL_KEY);
+  }catch(e){}
+}
+
+function shouldForceMainMenu(){
+  const params=new URLSearchParams(location.search);
+  return params.has("menu") || params.get("screen")==="menu";
+}
+
+function openMainModelMenu(){
+  try{
+    const url=new URL(window.location.href);
+    url.search="?menu=1";
+    url.hash="";
+    window.history.replaceState(null,"",url.toString());
+  }catch(e){}
+  showModelPickerFromIndex();
+}
+
+function loadAutostartLocalModel(){
+  const name=getAutostartLocalModel();
+  if(!name)return false;
+  return loadLocalModelByName(name,false);
+}
+
+function makeActionButton(text,cssClass,onClick){
+  const btn=document.createElement("button");
+  btn.type="button";
+  btn.className=cssClass || "model-choice";
+  btn.textContent=text;
+  btn.onclick=onClick;
+  return btn;
+}
+
+function makeModelChoiceBlock(titleText,descriptionText,onOpen,onStart){
+  const wrap=document.createElement("div");
+  wrap.style.border="1px solid #cbd5e1";
+  wrap.style.borderRadius="12px";
+  wrap.style.background="#f8fafc";
+  wrap.style.padding="10px";
+
+  const title=document.createElement("div");
+  title.style.fontWeight="bold";
+  title.style.marginBottom="4px";
+  title.textContent=titleText;
+  wrap.appendChild(title);
+
+  if(descriptionText){
+    const desc=document.createElement("small");
+    desc.textContent=descriptionText;
+    wrap.appendChild(desc);
+  }
+
+  const buttons=document.createElement("div");
+  buttons.style.display="grid";
+  buttons.style.gridTemplateColumns="1fr 1fr";
+  buttons.style.gap="8px";
+  buttons.style.marginTop="8px";
+
+  const openBtn=makeActionButton("Открыть","done-btn secondary-btn",onOpen);
+  openBtn.style.padding="9px";
+  openBtn.style.fontSize="14px";
+
+  const startBtn=makeActionButton("Сделать стартовой","done-btn",onStart);
+  startBtn.style.padding="9px";
+  startBtn.style.fontSize="14px";
+  startBtn.style.background="#059669";
+
+  buttons.appendChild(openBtn);
+  buttons.appendChild(startBtn);
+  wrap.appendChild(buttons);
+
+  return wrap;
 }
 
 
@@ -2067,12 +2142,12 @@ async function showModelPickerFromIndex(){
       .sort((a,b)=>a.localeCompare(b,"ru"));
       if(localNames.length){
         localNames.forEach(name=>{
-          const btn=document.createElement("button");
-          btn.type="button";
-          btn.className="model-choice";
-          btn.textContent=name;
-          btn.onclick=()=>loadLocalModelByName(name);
-          modelPickerList.appendChild(btn);
+          modelPickerList.appendChild(makeModelChoiceBlock(
+            name,
+            "Локальная модель",
+            ()=>loadLocalModelByName(name,false),
+            ()=>loadLocalModelByName(name,true)
+          ));
         });
         modelPickerStatus.textContent="models/index.json не найден. Показаны локальные модели.";
       }else{
@@ -2094,22 +2169,16 @@ async function showModelPickerFromIndex(){
     }
 
     items.forEach(item=>{
-      const btn=document.createElement("button");
-      btn.type="button";
-      btn.className="model-choice";
-      btn.textContent=item.title;
-
-      if(item.description){
-        const small=document.createElement("small");
-        small.textContent=item.description;
-        btn.appendChild(small);
-      }
-
-      btn.onclick=async ()=>{
-        await loadModelFromGitHubById(item.id,"picker");
-      };
-
-      modelPickerList.appendChild(btn);
+      modelPickerList.appendChild(makeModelChoiceBlock(
+        item.title,
+        item.description || "GitHub-модель",
+        async ()=>{
+          await loadModelFromGitHubById(item.id,"picker",false);
+        },
+        async ()=>{
+          await loadModelFromGitHubById(item.id,"picker",true);
+        }
+      ));
     });
 
     const localModels=loadModels();
@@ -2125,24 +2194,16 @@ async function showModelPickerFromIndex(){
       modelPickerList.appendChild(title);
 
       localNames.forEach(name=>{
-        const btn=document.createElement("button");
-        btn.type="button";
-        btn.className="model-choice";
-        btn.textContent=name;
-
-        const small=document.createElement("small");
-        small.textContent="Локальная модель";
-        btn.appendChild(small);
-
-        btn.onclick=()=>{
-          loadLocalModelByName(name);
-        };
-
-        modelPickerList.appendChild(btn);
+        modelPickerList.appendChild(makeModelChoiceBlock(
+          name,
+          "Локальная модель",
+          ()=>loadLocalModelByName(name,false),
+          ()=>loadLocalModelByName(name,true)
+        ));
       });
     }
 
-    modelPickerStatus.textContent="Доступно моделей GitHub: "+items.length+", локальных: "+localNames.length;
+    modelPickerStatus.textContent="Доступно моделей GitHub: "+items.length+", локальных: "+localNames.length+". Кнопка ‘Сделать стартовой’ задаёт модель для Android-иконки.";
     return true;
   }catch(e){
     modelPickerStatus.textContent="Ошибка загрузки списка моделей. Можно импортировать присланный JSON-файл модели.";
@@ -2207,7 +2268,6 @@ function saveCurrentSettingsAsLocalModel(name){
   modelNameInput.value=localName;
   currentGitHubModelId="";
   setAddressToLocalModel(localName);
-  setAutostartLocalModel(localName);
   renderModelList();
   return localName;
 }
@@ -2240,7 +2300,6 @@ function installLocalModelButtonHandlers(){
       currentGitHubModelId="";
       modelNameInput.value=name;
       setAddressToLocalModel(name);
-      setAutostartLocalModel(name);
       modelStatus.textContent="Локальная модель сохранена на этом устройстве: "+name;
       renderModelList();
     };
@@ -2296,7 +2355,6 @@ function installLocalModelButtonHandlers(){
         currentGitHubModelId="";
         modelNameInput.value=name;
         setAddressToLocalModel(name);
-        setAutostartLocalModel(name);
         modelStatus.textContent="Импортирована и сохранена локальная модель: "+name;
         if(modelPicker)modelPicker.classList.remove("active");
         renderModelList();
@@ -2308,22 +2366,6 @@ function installLocalModelButtonHandlers(){
       }
     };
   }
-}
-
-function loadAutostartLocalModel(){
-  if(shouldForceModelPicker())return false;
-
-  const params=new URLSearchParams(location.search);
-  if(location.hash || params.has("local") || params.has("model") || params.has("localpanel"))return false;
-
-  const name=getAutostartLocalModel();
-  if(!name)return false;
-
-  const ok=loadLocalModelByName(name);
-  if(!ok){
-    clearAutostartLocalModel();
-  }
-  return ok;
 }
 
 async function initClockApp(){
@@ -2338,13 +2380,15 @@ async function initClockApp(){
   if(!loadedFromHash){
     if(shouldShowLocalPanel()){
       showLocalModelsPanel();
+    }else if(shouldForceMainMenu()){
+      await showModelPickerFromIndex();
     }else{
       const loadedFromLocal=loadLocalModelFromQuery();
       if(!loadedFromLocal){
-        const loadedFromAutostart=loadAutostartLocalModel();
-        if(!loadedFromAutostart){
-          const loadedFromQuery=await loadModelFromGitHubQuery();
-          if(!loadedFromQuery){
+        const loadedFromQuery=await loadModelFromGitHubQuery();
+        if(!loadedFromQuery){
+          const loadedFromAutostart=loadAutostartLocalModel();
+          if(!loadedFromAutostart){
             await showModelPickerFromIndex();
           }
         }
