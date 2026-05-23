@@ -452,21 +452,13 @@ function arrangeTopButtons(){
 
 arrangeTopButtons();
 
-/* Во время активной разработки service worker отключён:
-   он слишком охотно хранит старые версии HTML/JSON и мешает отладке. */
-if("serviceWorker" in navigator){
+/* Production mode: service worker включён.
+   Это нужно Android Chrome для нормальной установки на главный экран. */
+if("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost")){
   window.addEventListener("load",()=>{
-    navigator.serviceWorker.getRegistrations()
-      .then(regs=>regs.forEach(reg=>reg.unregister()))
-      .catch(e=>console.log("Service worker cleanup error:",e));
-  });
-}
-
-if(window.caches){
-  window.addEventListener("load",()=>{
-    caches.keys()
-      .then(keys=>keys.forEach(key=>caches.delete(key)))
-      .catch(e=>console.log("Cache cleanup error:",e));
+    navigator.serviceWorker.register("clock_service_worker.js")
+      .then(()=>console.log("Service worker registered."))
+      .catch(e=>console.log("Service worker registration error:",e));
   });
 }
 
@@ -523,10 +515,7 @@ canvas.addEventListener("contextmenu",e=>{
   toggleConstructorMode();
 });
 
-/* Дополнительная защита от системного меню Copy/Share */
-document.addEventListener("contextmenu",e=>{
-  e.preventDefault();
-});
+/* Глобальное меню браузера не блокируем: это нужно для Android Chrome и команды "Добавить на главный экран". */
 
 let screenBgColor="#0f172a";
 let faceColor="#111111";
@@ -1425,6 +1414,7 @@ function saveLocalModelByName(name,settings){
   saveModels(models);
   modelNameInput.value=rawName;
   currentGitHubModelId="";
+  setAddressToLocalModel(rawName);
   modelStatus.textContent="Локальная модель сохранена на этом устройстве: "+rawName;
   renderModelList();
   return true;
@@ -1601,6 +1591,7 @@ function renderModelList(){
       applySettings(fresh[name]);
       currentGitHubModelId="";
       modelNameInput.value=name;
+      setAddressToLocalModel(name);
       modelStatus.textContent="Загружена локальная модель: "+name;
     };
     const deleteBtn=document.createElement("button");
@@ -1884,9 +1875,12 @@ async function loadModelFromGitHubById(modelId,sourceLabel){
     }
 
     modelNameInput.value=data.name || data.title || data.id || normalizedId;
+    const displayName=data.name || data.title || normalizedId;
+    const localName=saveCurrentSettingsAsLocalModel(displayName);
+
     modelStatus.textContent=localOverride
-      ? "Модель загружена из GitHub с локальной настройкой устройства: "+(data.name || data.title || normalizedId)
-      : "Модель загружена из GitHub: "+(data.name || data.title || normalizedId);
+      ? "Модель загружена из GitHub, применена локальная настройка устройства и сохранена как локальная: "+localName
+      : "Модель загружена из GitHub и сохранена как локальная: "+localName;
 
     try{
       localStorage.setItem("clock_last_github_model",normalizedId);
@@ -1955,6 +1949,7 @@ function loadLocalModelByName(name){
   applySettings(settings);
   currentGitHubModelId="";
   modelNameInput.value=resolvedName;
+  setAddressToLocalModel(resolvedName);
   if(modelPicker)modelPicker.classList.remove("active");
   modelStatus.textContent="Загружена локальная модель: "+resolvedName;
   return true;
@@ -1967,31 +1962,9 @@ function loadLocalModelFromQuery(){
   return loadLocalModelByName(localParam);
 }
 
-function makeLauncherUrl(fileName,query){
-  const basePath=location.pathname.replace(/[^\/]*$/,fileName);
-  return location.origin+basePath+(query||"");
-}
-
-function makeGitHubModelLauncherUrl(modelId){
-  const id=normalizeModelId(modelId);
-  return makeLauncherUrl("clock_"+id+".html","");
-}
-
-function makeLocalModelLauncherUrl(name){
-  const modelName=makeLocalModelName(String(name||modelNameInput.value||"").trim());
-  return makeLauncherUrl("clock_local.html","?local="+encodeURIComponent(modelName));
-}
-
-function openGitHubModelLauncher(modelId){
-  window.location.href=makeGitHubModelLauncherUrl(modelId);
-}
-
-function openLocalModelLauncher(name){
-  window.location.href=makeLocalModelLauncherUrl(name);
-}
-
 function makeLocalModelLaunchLink(name){
-  return makeLocalModelLauncherUrl(name);
+  const modelName=makeLocalModelName(String(name||modelNameInput.value||"").trim());
+  return location.origin+location.pathname+"?local="+encodeURIComponent(modelName);
 }
 
 
@@ -2029,7 +2002,7 @@ function showLocalModelsPanel(){
     btn.appendChild(small);
 
     btn.onclick=()=>{
-      openLocalModelLauncher(name);
+      loadLocalModelByName(name);
     };
 
     modelPickerList.appendChild(btn);
@@ -2066,7 +2039,7 @@ async function showModelPickerFromIndex(){
           btn.type="button";
           btn.className="model-choice";
           btn.textContent=name;
-          btn.onclick=()=>openLocalModelLauncher(name);
+          btn.onclick=()=>loadLocalModelByName(name);
           modelPickerList.appendChild(btn);
         });
         modelPickerStatus.textContent="models/index.json не найден. Показаны локальные модели.";
@@ -2101,7 +2074,7 @@ async function showModelPickerFromIndex(){
       }
 
       btn.onclick=async ()=>{
-        openGitHubModelLauncher(item.id);
+        await loadModelFromGitHubById(item.id,"picker");
       };
 
       modelPickerList.appendChild(btn);
@@ -2130,7 +2103,7 @@ async function showModelPickerFromIndex(){
         btn.appendChild(small);
 
         btn.onclick=()=>{
-          openLocalModelLauncher(name);
+          loadLocalModelByName(name);
         };
 
         modelPickerList.appendChild(btn);
@@ -2182,6 +2155,30 @@ function makeLocalModelName(name){
   return /L$/i.test(raw) ? raw : raw+"L";
 }
 
+function setAddressToLocalModel(name){
+  const localName=makeLocalModelName(name);
+  try{
+    const url=new URL(window.location.href);
+    url.search="?local="+encodeURIComponent(localName);
+    url.hash="";
+    window.history.replaceState(null,"",url.toString());
+  }catch(e){
+    console.log("Не удалось обновить адрес локальной модели:",e);
+  }
+}
+
+function saveCurrentSettingsAsLocalModel(name){
+  const localName=makeLocalModelName(name);
+  const models=loadModels();
+  models[localName]=collectCurrentSettings();
+  saveModels(models);
+  modelNameInput.value=localName;
+  currentGitHubModelId="";
+  setAddressToLocalModel(localName);
+  renderModelList();
+  return localName;
+}
+
 function isLocalModelName(name){
   return /L$/i.test(String(name||"").trim());
 }
@@ -2209,6 +2206,7 @@ function installLocalModelButtonHandlers(){
 
       currentGitHubModelId="";
       modelNameInput.value=name;
+      setAddressToLocalModel(name);
       modelStatus.textContent="Локальная модель сохранена на этом устройстве: "+name;
       renderModelList();
     };
@@ -2263,6 +2261,7 @@ function installLocalModelButtonHandlers(){
 
         currentGitHubModelId="";
         modelNameInput.value=name;
+        setAddressToLocalModel(name);
         modelStatus.textContent="Импортирована и сохранена локальная модель: "+name;
         if(modelPicker)modelPicker.classList.remove("active");
         renderModelList();
