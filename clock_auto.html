@@ -4,13 +4,32 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Auto Clock</title>
-<meta http-equiv="refresh" content="0; url=ClockViewerAndroid.html?model=auto">
-<script>
-  location.replace('ClockViewerAndroid.html?model=auto');
-</script>
+<meta name="theme-color" content="#0f172a">
+<link rel="manifest" href="clock_manifest.json">
+<link rel="apple-touch-icon" href="clock_icon_192.png">
+<style>
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%;font-family:Arial,sans-serif;background:#0f172a;color:#f8fafc}
+body{display:flex;align-items:center;justify-content:center;padding:22px}
+.card{width:min(460px,94vw);background:#fff;color:#1f2937;border-radius:22px;padding:22px;box-shadow:0 18px 50px rgba(0,0,0,.35)}
+h1{margin:0 0 8px;font-size:26px}
+p{margin:0 0 16px;color:#64748b;line-height:1.45}
+.btn{display:block;width:100%;border:none;border-radius:14px;padding:14px 16px;margin:10px 0;font-size:17px;font-weight:700;text-align:center;text-decoration:none;cursor:pointer}
+.primary{background:#2563eb;color:#fff}
+.secondary{background:#e2e8f0;color:#0f172a}
+.small{font-size:13px;color:#64748b;margin-top:14px;line-height:1.35}
+.code{font-family:Consolas,monospace;background:#f1f5f9;padding:2px 5px;border-radius:6px}
+</style>
 </head>
 <body>
-  Loading Auto Clock...
-  <p><a href="ClockViewerAndroid.html?model=auto">Open clock</a></p>
+  <main class="card">
+    <h1>Auto Clock</h1>
+    <p>Это launcher-страница модели. Здесь меню Chrome должно работать нормально: можно добавить эту страницу на главный экран Android или открыть часы.</p>
+
+    <a class="btn primary" href="ClockViewerAndroid.html?model=auto">Открыть часы / Open Clock</a>
+    <a class="btn secondary" href="ClockViewerAndroid.html">Вернуться к выбору моделей</a>
+
+    <p class="small">Для иконки Android: откройте меню Chrome ⋮ и выберите «Добавить на главный экран». Иконка будет вести на <span class="code">clock_auto.html</span>.</p>
+  </main>
 </body>
 </html>
