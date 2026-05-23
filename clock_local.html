@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="theme-color" content="#0f172a">
-<title>Zodiac Clock</title>
+<title>Local Clock</title>
 <style>
 *{box-sizing:border-box}
 body{margin:0;min-height:100vh;background:#0f172a;color:#e5e7eb;font-family:Arial,sans-serif;display:flex;align-items:center;justify-content:center;padding:20px}
@@ -21,20 +21,23 @@ button{width:100%;border:0;border-radius:14px;padding:14px 16px;margin-top:10px;
 </head>
 <body>
 <div class="card">
-  <h1>Zodiac Clock</h1>
-  <p>GitHub-модель: <strong>zodiac</strong></p>
+  <h1>Local Clock</h1>
+  <p>Локальная модель: <strong id="targetName"></strong></p>
   <p class="note">Эта чистая страница нужна для Android-иконки. Здесь меню Chrome должно работать спокойно: ⋮ → Добавить на главный экран.</p>
   <button class="primary" id="openClock" type="button">Открыть часы / Open Clock</button>
   <button class="secondary" id="backList" type="button">Вернуться к выбору моделей</button>
 </div>
 <script>
-const target = "ClockViewerAndroid.html?model=zodiac";
+const params = new URLSearchParams(window.location.search);
+const localName = params.get("local") || "";
+const target = "ClockViewerAndroid.html" + (localName ? "?local=" + encodeURIComponent(localName) : "?localpanel=1");
+document.getElementById("targetName").textContent = localName || "local model";
 document.getElementById("openClock").onclick = () => { window.location.href = target; };
-document.getElementById("backList").onclick = () => { window.location.href = "ClockViewerAndroid.html"; };
+document.getElementById("backList").onclick = () => { window.location.href = "ClockViewerAndroid.html?localpanel=1"; };
 function isStandaloneMode(){
   return window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
 }
-if(isStandaloneMode()){
+if(isStandaloneMode() && localName){
   setTimeout(() => { window.location.replace(target); }, 350);
 }
 </script>
