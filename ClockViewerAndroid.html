@@ -130,6 +130,7 @@ small{display:block;color:var(--muted);margin-top:4px;line-height:1.35}
     <h2 id="modelPickerTitle">Выбор модели часов</h2>
     <p style="margin:0 0 8px;color:#059669;font-weight:bold;">LOCAL START FIX версия</p>
     <p>Откройте модель или назначьте её стартовой для Android-иконки.</p>
+    <p style="font-size:12px;color:#059669;margin-top:-8px;">LOCAL-START URL-CLEAN version</p>
     <div class="model-picker-list" id="modelPickerList"></div>
     <div id="modelPickerImportBox" style="display:none;margin-top:12px;">
       <button type="button" class="done-btn secondary-btn" id="modelPickerImportJson" style="background:#0891b2;">Import LOCAL MODEL JSON</button>
@@ -1965,7 +1966,7 @@ function loadLocalModelByName(name,makeAutostart=false){
   }
   if(modelPicker)modelPicker.classList.remove("active");
   modelStatus.textContent=makeAutostart
-    ? "Стартовая локальная модель назначена и загружена: "+resolvedName
+    ? "✅ Стартовая локальная модель назначена и загружена: "+resolvedName+". Теперь можно нажать Chrome → Установить или Создать ярлык."
     : "Загружена локальная модель: "+resolvedName;
   return true;
 }
@@ -1986,6 +1987,7 @@ function setAutostartLocalModel(name){
   const localName=makeLocalModelName(name);
   try{
     localStorage.setItem(AUTOSTART_LOCAL_MODEL_KEY,localName);
+    normalizeUrlAfterStartModel(localName);
   }catch(e){
     console.log("Не удалось сохранить стартовую модель:",e);
   }
@@ -2032,6 +2034,24 @@ function loadAutostartLocalModel(){
   }
 
   return loadLocalModelByName(name,false);
+}
+
+function normalizeUrlAfterStartModel(name){
+  /*
+    When the user presses “Сделать стартовой” from the main menu, the page may
+    currently have ?menu=1 in the address. Android “Create shortcut” can preserve
+    that URL and then always reopen the menu. So after appointing a start model
+    we deliberately replace the visible URL with ?local=<model>.
+  */
+  const localName=makeLocalModelName(name);
+  try{
+    const url=new URL(window.location.href);
+    url.search="?local="+encodeURIComponent(localName);
+    url.hash="";
+    window.history.replaceState(null,"",url.toString());
+  }catch(e){
+    console.log("Не удалось нормализовать URL после назначения стартовой модели:",e);
+  }
 }
 
 function makeActionButton(text,cssClass,onClick){
@@ -2321,7 +2341,7 @@ function installLocalModelButtonHandlers(){
       const baseName=(modelNameInput.value || currentGitHubModelId || "local-clock-model").trim();
       const name=saveCurrentSettingsAsLocalModel(baseName);
       setAutostartLocalModel(name);
-      modelStatus.textContent="✅ Текущая настройка сохранена и назначена стартовой для Android-иконки: "+name;
+      modelStatus.textContent="✅ Текущая настройка сохранена и назначена стартовой для Android-иконки: "+name+". Теперь можно нажать Chrome → Установить или Создать ярлык.";
     };
   }
 
@@ -2400,13 +2420,16 @@ async function initClockApp(){
   if(!loadedFromHash){
     if(shouldShowLocalPanel()){
       showLocalModelsPanel();
-    }else if(shouldForceMainMenu()){
-      await showModelPickerFromIndex();
     }else{
       const loadedFromLocal=loadLocalModelFromQuery();
       if(!loadedFromLocal){
         const loadedFromQuery=await loadModelFromGitHubQuery();
         if(!loadedFromQuery){
+          /*
+            Important for Android shortcuts/PWA icons:
+            a shortcut may reopen the old ?menu=1 URL. The start model must win,
+            otherwise the icon will keep returning to the model menu.
+          */
           const loadedFromAutostart=loadAutostartLocalModel();
           if(!loadedFromAutostart){
             await showModelPickerFromIndex();
