@@ -129,7 +129,6 @@ small{display:block;color:var(--muted);margin-top:4px;line-height:1.35}
     <button type="button" class="model-picker-exit" id="modelPickerExit" aria-label="Выход">✕</button>
     <h2 id="modelPickerTitle">Выбор модели часов</h2>
     <p>Откройте модель или назначьте её стартовой для Android-иконки.</p>
-    <p style="margin-top:-8px;color:#059669;font-weight:bold;">LOCAL-START CLEAN-ROOT version</p>
     <div class="model-picker-list" id="modelPickerList"></div>
     <div id="modelPickerImportBox" style="display:none;margin-top:12px;">
       <button type="button" class="done-btn secondary-btn" id="modelPickerImportJson" style="background:#0891b2;">Import LOCAL MODEL JSON</button>
@@ -162,7 +161,6 @@ small{display:block;color:var(--muted);margin-top:4px;line-height:1.35}
         <p class="section-note">Работа с текущими часами: сохранить на этом устройстве, экспортировать или импортировать одну JSON-модель.</p>
         <div class="button-stack">
           <button type="button" class="done-btn" id="saveModel">Сохранить локальную модель</button>
-          <button type="button" class="done-btn secondary-btn" id="makeCurrentStartModel" style="background:#059669;">Сделать текущую настройку стартовой</button>
           <button type="button" class="done-btn secondary-btn" id="exportLocalModel" style="background:#16a34a;">Export LOCAL MODEL JSON</button>
           <button type="button" class="done-btn secondary-btn" id="importLocalModelButton" style="background:#0891b2;">Import LOCAL MODEL JSON</button>
           <input type="file" id="importLocalModelFile" accept=".json,application/json" style="display:none">
@@ -1962,7 +1960,6 @@ function loadLocalModelByName(name,makeAutostart=false){
   setAddressToLocalModel(resolvedName);
   if(makeAutostart){
     setAutostartLocalModel(resolvedName);
-    cleanAddressForInstall();
   }
   if(modelPicker)modelPicker.classList.remove("active");
   modelStatus.textContent=makeAutostart
@@ -1987,7 +1984,6 @@ function setAutostartLocalModel(name){
   const localName=makeLocalModelName(name);
   try{
     localStorage.setItem(AUTOSTART_LOCAL_MODEL_KEY,localName);
-    cleanAddressForInstall();
   }catch(e){
     console.log("Не удалось сохранить стартовую модель:",e);
   }
@@ -2025,12 +2021,7 @@ function openMainModelMenu(){
 function loadAutostartLocalModel(){
   const name=getAutostartLocalModel();
   if(!name)return false;
-  const ok=loadLocalModelByName(name,false);
-  if(ok){
-    if(modelPicker)modelPicker.classList.remove("active");
-    cleanAddressForInstall();
-  }
-  return ok;
+  return loadLocalModelByName(name,false);
 }
 
 function makeActionButton(text,cssClass,onClick){
@@ -2257,22 +2248,16 @@ function makeLocalModelName(name){
   return /L$/i.test(raw) ? raw : raw+"L";
 }
 
-function cleanAddressForInstall(){
+function setAddressToLocalModel(name){
+  const localName=makeLocalModelName(name);
   try{
     const url=new URL(window.location.href);
-    url.search="";
+    url.search="?local="+encodeURIComponent(localName);
     url.hash="";
     window.history.replaceState(null,"",url.toString());
   }catch(e){
-    console.log("Не удалось очистить адрес для установки:",e);
+    console.log("Не удалось обновить адрес локальной модели:",e);
   }
-}
-
-function setAddressToLocalModel(name){
-  /* Важно: НЕ ставим ?local=... в адрес.
-     Android должен видеть чистый ClockViewerAndroid.html,
-     а стартовая модель выбирается из localStorage. */
-  cleanAddressForInstall();
 }
 
 function saveCurrentSettingsAsLocalModel(name){
@@ -2293,7 +2278,6 @@ function isLocalModelName(name){
 
 function installLocalModelButtonHandlers(){
   const saveBtn=document.getElementById("saveModel");
-  const makeCurrentStartBtn=document.getElementById("makeCurrentStartModel");
   const exportBtn=document.getElementById("exportLocalModel");
   const importBtn=document.getElementById("importLocalModelButton");
   const importFile=document.getElementById("importLocalModelFile");
@@ -2318,23 +2302,6 @@ function installLocalModelButtonHandlers(){
       setAddressToLocalModel(name);
       modelStatus.textContent="Локальная модель сохранена на этом устройстве: "+name;
       renderModelList();
-    };
-  }
-
-  if(makeCurrentStartBtn){
-    makeCurrentStartBtn.onclick=()=>{
-      const baseName=(modelNameInput.value || currentGitHubModelId || "local-clock-model").trim();
-      const name=makeLocalModelName(baseName);
-      const models=loadModels();
-      models[name]=collectCurrentSettings();
-      saveModels(models);
-      modelNameInput.value=name;
-      currentGitHubModelId="";
-      setAutostartLocalModel(name);
-      renderModelList();
-      if(panel)panel.classList.remove("active");
-      if(modelPicker)modelPicker.classList.remove("active");
-      modelStatus.textContent="✅ Текущая настройка сохранена и назначена стартовой: "+name;
     };
   }
 
