@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Clock">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>Clock Viewer</title>
+<title>Clock Viewer DEBUG AUTOSTART</title>
 <style>
 :root{--bg:#0f172a;--text:#1f2937;--muted:#64748b}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -94,6 +94,8 @@ small{display:block;color:var(--muted);margin-top:4px;line-height:1.35}
 #exitBtn.two-button-left{left:calc(50% - 39px);transform:translateX(-50%)}
 #fullscreenBtn.two-button-right{left:calc(50% + 39px);transform:translateX(-50%)}
 
+#debugPanel{margin-top:12px;padding:10px;border:1px dashed #94a3b8;border-radius:10px;background:#f8fafc;color:#334155;font:12px/1.35 Consolas,monospace;white-space:pre-wrap}
+#debugPanel strong{font-family:Arial,sans-serif;font-size:13px;color:#0f172a}
 #exitHint{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.72);color:#fff;padding:10px 16px;border-radius:12px;font-size:14px;line-height:1.35;opacity:0;pointer-events:none;transition:opacity .3s;z-index:40;box-shadow:0 6px 18px rgba(0,0,0,.28);max-width:calc(100vw - 32px);text-align:center}
 @media(max-width:520px){
   .color-grid,.hex-controls,.time-grid,.model-grid{grid-template-columns:1fr}
@@ -135,6 +137,8 @@ small{display:block;color:var(--muted);margin-top:4px;line-height:1.35}
       <small>Если вместе с HTML вам прислали JSON-модель, импортируйте её здесь. Полный конструктор открывается длительным нажатием на циферблат.</small>
     </div>
     <div class="model-picker-status" id="modelPickerStatus">Загружаю список моделей…</div>
+    <div id="debugPanel"><strong>DEBUG AUTOSTART</strong>
+Инициализация...</div>
   </div>
 </div>
 
@@ -556,6 +560,7 @@ let customSvgCacheKey="";
 
 const STORAGE_KEY="clock_constructor_models_v6";
 const AUTOSTART_LOCAL_MODEL_KEY="clock_autostart_local_model";
+const DEBUG_AUTOSTART=true;
 const VIEWER_URL="https://alost46.github.io/trustworthy-ai-glossary/ClockViewerAndroid.html";
 let currentGitHubModelId="";
 
@@ -1980,10 +1985,55 @@ function makeLocalModelLaunchLink(name){
   return location.origin+location.pathname+"?local="+encodeURIComponent(modelName);
 }
 
+
+function getDebugAutostartText(context){
+  let autostart="";
+  let modelsRaw="";
+  let modelKeys=[];
+  let exists=false;
+
+  try{
+    autostart=localStorage.getItem(AUTOSTART_LOCAL_MODEL_KEY) || "";
+  }catch(e){
+    autostart="ERROR reading autostart: "+e;
+  }
+
+  try{
+    modelsRaw=localStorage.getItem(STORAGE_KEY) || "";
+    const parsed=modelsRaw ? JSON.parse(modelsRaw) : {};
+    modelKeys=Object.keys(parsed || {});
+    exists=Boolean(autostart && parsed && Object.prototype.hasOwnProperty.call(parsed,autostart));
+  }catch(e){
+    modelKeys=["ERROR reading models: "+e];
+  }
+
+  return [
+    "context: "+context,
+    "url.search: "+window.location.search,
+    "url.hash: "+window.location.hash,
+    "autostart key: "+(autostart || "<empty>"),
+    "autostart model exists: "+(exists ? "YES" : "NO"),
+    "local model keys: "+(modelKeys.length ? modelKeys.join(", ") : "<none>"),
+    "currentGitHubModelId: "+(currentGitHubModelId || "<empty>"),
+    "modelNameInput: "+(modelNameInput && modelNameInput.value ? modelNameInput.value : "<empty>")
+  ].join("\n");
+}
+
+function debugAutostart(context){
+  if(!DEBUG_AUTOSTART)return;
+  const text=getDebugAutostartText(context);
+  const panel=document.getElementById("debugPanel");
+  if(panel){
+    panel.innerHTML="<strong>DEBUG AUTOSTART</strong>\n"+text.replace(/[&<>]/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[ch]));
+  }
+  console.log("DEBUG AUTOSTART\n"+text);
+}
+
 function setAutostartLocalModel(name){
   const localName=makeLocalModelName(name);
   try{
     localStorage.setItem(AUTOSTART_LOCAL_MODEL_KEY,localName);
+    debugAutostart("setAutostartLocalModel("+localName+")");
   }catch(e){
     console.log("Не удалось сохранить стартовую модель:",e);
   }
@@ -2000,6 +2050,7 @@ function getAutostartLocalModel(){
 function clearAutostartLocalModel(){
   try{
     localStorage.removeItem(AUTOSTART_LOCAL_MODEL_KEY);
+    debugAutostart("clearAutostartLocalModel");
   }catch(e){}
 }
 
@@ -2019,9 +2070,15 @@ function openMainModelMenu(){
 }
 
 function loadAutostartLocalModel(){
+  debugAutostart("loadAutostartLocalModel: before read");
   const name=getAutostartLocalModel();
-  if(!name)return false;
-  return loadLocalModelByName(name,false);
+  if(!name){
+    debugAutostart("loadAutostartLocalModel: empty");
+    return false;
+  }
+  const ok=loadLocalModelByName(name,false);
+  debugAutostart("loadAutostartLocalModel: tried "+name+" result="+ok);
+  return ok;
 }
 
 function makeActionButton(text,cssClass,onClick){
@@ -2370,6 +2427,7 @@ function installLocalModelButtonHandlers(){
 
 async function initClockApp(){
   installLocalModelButtonHandlers();
+  debugAutostart("initClockApp: start");
   buildHexTable();
   updatePreview();
   renderCustomSvgPreview();
@@ -2379,15 +2437,20 @@ async function initClockApp(){
   const loadedFromHash=loadSettingsFromURL();
   if(!loadedFromHash){
     if(shouldShowLocalPanel()){
+      debugAutostart("initClockApp: show local panel forced");
       showLocalModelsPanel();
     }else if(shouldForceMainMenu()){
+      debugAutostart("initClockApp: main menu forced by URL");
       await showModelPickerFromIndex();
     }else{
       const loadedFromLocal=loadLocalModelFromQuery();
+      debugAutostart("initClockApp: loadedFromLocal="+loadedFromLocal);
       if(!loadedFromLocal){
         const loadedFromQuery=await loadModelFromGitHubQuery();
+        debugAutostart("initClockApp: loadedFromGitHubQuery="+loadedFromQuery);
         if(!loadedFromQuery){
           const loadedFromAutostart=loadAutostartLocalModel();
+          debugAutostart("initClockApp: loadedFromAutostart="+loadedFromAutostart);
           if(!loadedFromAutostart){
             await showModelPickerFromIndex();
           }
