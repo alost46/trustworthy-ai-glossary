@@ -392,10 +392,23 @@ document.addEventListener("DOMContentLoaded",async()=>{initDesktopEvents();initM
 
 
 
+
 <script>
-/* PATCH: direct Exit without intermediate screen */
+/* PATCH: smart Exit/Home behavior */
 (function(){
-  function exitGlossary(){
+
+  function isHomeScreen(){
+    const home = document.getElementById("mHomeScreen");
+    return home && home.classList.contains("active");
+  }
+
+  function goHome(){
+    if (typeof mShowScreen === "function") {
+      mShowScreen("home");
+    }
+  }
+
+  function realExit(){
     try {
       if (window.history.length > 1) {
         window.history.back();
@@ -408,7 +421,6 @@ document.addEventListener("DOMContentLoaded",async()=>{initDesktopEvents();initM
       window.close();
     } catch(e) {}
 
-    // fallback: simple neutral page
     document.body.className = "mobile-body";
     document.body.innerHTML = `
       <main style="
@@ -423,22 +435,35 @@ document.addEventListener("DOMContentLoaded",async()=>{initDesktopEvents();initM
         padding:24px;
       ">
         <div>
-          <h1 style="margin:0;font-size:24px;">Выход / Exit</h1>
+          <h1 style="margin:0;font-size:24px;">
+            Выход / Exit
+          </h1>
         </div>
       </main>
     `;
   }
 
+  function exitGlossary(){
+    if (isHomeScreen()) {
+      realExit();
+    } else {
+      goHome();
+    }
+  }
+
   document.addEventListener("DOMContentLoaded", function(){
     var btn = document.getElementById("exitBtn");
+
     if (btn) {
       btn.addEventListener("click", exitGlossary);
+
       btn.addEventListener("touchend", function(e){
         e.preventDefault();
         exitGlossary();
       }, {passive:false});
     }
   });
+
 })();
 </script>
 
