@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Clock">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>Clock Viewer - start model menu</title>
+<title>Clock Viewer</title>
 <style>
 :root{--bg:#0f172a;--text:#1f2937;--muted:#64748b}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -128,7 +128,8 @@ small{display:block;color:var(--muted);margin-top:4px;line-height:1.35}
   <div class="model-picker-card">
     <button type="button" class="model-picker-exit" id="modelPickerExit" aria-label="Выход">✕</button>
     <h2 id="modelPickerTitle">Выбор модели часов</h2>
-    <p><b>Версия START-MODEL.</b> У каждой модели должны быть две кнопки: <b>Открыть</b> и <b>Сделать стартовой</b>.</p>
+    <p style="margin:0 0 8px;color:#059669;font-weight:bold;">LOCAL START FIX версия</p>
+    <p>Откройте модель или назначьте её стартовой для Android-иконки.</p>
     <div class="model-picker-list" id="modelPickerList"></div>
     <div id="modelPickerImportBox" style="display:none;margin-top:12px;">
       <button type="button" class="done-btn secondary-btn" id="modelPickerImportJson" style="background:#0891b2;">Import LOCAL MODEL JSON</button>
@@ -161,6 +162,7 @@ small{display:block;color:var(--muted);margin-top:4px;line-height:1.35}
         <p class="section-note">Работа с текущими часами: сохранить на этом устройстве, экспортировать или импортировать одну JSON-модель.</p>
         <div class="button-stack">
           <button type="button" class="done-btn" id="saveModel">Сохранить локальную модель</button>
+          <button type="button" class="done-btn secondary-btn" id="makeCurrentStartModel" style="background:#059669;">Сделать текущую настройку стартовой</button>
           <button type="button" class="done-btn secondary-btn" id="exportLocalModel" style="background:#16a34a;">Export LOCAL MODEL JSON</button>
           <button type="button" class="done-btn secondary-btn" id="importLocalModelButton" style="background:#0891b2;">Import LOCAL MODEL JSON</button>
           <input type="file" id="importLocalModelFile" accept=".json,application/json" style="display:none">
@@ -1984,7 +1986,6 @@ function setAutostartLocalModel(name){
   const localName=makeLocalModelName(name);
   try{
     localStorage.setItem(AUTOSTART_LOCAL_MODEL_KEY,localName);
-    setAddressToLocalModel(localName);
   }catch(e){
     console.log("Не удалось сохранить стартовую модель:",e);
   }
@@ -2022,6 +2023,14 @@ function openMainModelMenu(){
 function loadAutostartLocalModel(){
   const name=getAutostartLocalModel();
   if(!name)return false;
+
+  const models=loadModels();
+  const exists=Object.keys(models).some(n=>n===name || n.toLowerCase()===String(name).toLowerCase());
+  if(!exists){
+    console.log("Autostart model key exists but model is missing:",name);
+    return false;
+  }
+
   return loadLocalModelByName(name,false);
 }
 
@@ -2100,15 +2109,23 @@ function showLocalModelsPanel(){
   modelPickerList.appendChild(title);
 
   localNames.forEach(name=>{
-    modelPickerList.appendChild(makeModelChoiceBlock(
-      name,
-      "Локальная модель",
-      ()=>loadLocalModelByName(name,false),
-      ()=>loadLocalModelByName(name,true)
-    ));
+    const btn=document.createElement("button");
+    btn.type="button";
+    btn.className="model-choice";
+    btn.textContent=name;
+
+    const small=document.createElement("small");
+    small.textContent="Локальная модель";
+    btn.appendChild(small);
+
+    btn.onclick=()=>{
+      loadLocalModelByName(name);
+    };
+
+    modelPickerList.appendChild(btn);
   });
 
-  modelPickerStatus.textContent="Доступно локальных моделей: "+localNames.length+". У каждой модели есть кнопки: Открыть и Сделать стартовой.";
+  modelPickerStatus.textContent="Доступно локальных моделей: "+localNames.length;
   return true;
 }
 
@@ -2196,7 +2213,7 @@ async function showModelPickerFromIndex(){
       });
     }
 
-    modelPickerStatus.textContent="START-MODEL AUTOSTART-FIRST версия. Доступно моделей GitHub: "+items.length+", локальных: "+localNames.length+". Кнопка ‘Сделать стартовой’ задаёт модель для Android-иконки.";
+    modelPickerStatus.textContent="Доступно моделей GitHub: "+items.length+", локальных: "+localNames.length+". Кнопка ‘Сделать стартовой’ задаёт модель для Android-иконки.";
     return true;
   }catch(e){
     modelPickerStatus.textContent="Ошибка загрузки списка моделей. Можно импортировать присланный JSON-файл модели.";
@@ -2271,6 +2288,7 @@ function isLocalModelName(name){
 
 function installLocalModelButtonHandlers(){
   const saveBtn=document.getElementById("saveModel");
+  const makeCurrentStartBtn=document.getElementById("makeCurrentStartModel");
   const exportBtn=document.getElementById("exportLocalModel");
   const importBtn=document.getElementById("importLocalModelButton");
   const importFile=document.getElementById("importLocalModelFile");
@@ -2295,6 +2313,15 @@ function installLocalModelButtonHandlers(){
       setAddressToLocalModel(name);
       modelStatus.textContent="Локальная модель сохранена на этом устройстве: "+name;
       renderModelList();
+    };
+  }
+
+  if(makeCurrentStartBtn){
+    makeCurrentStartBtn.onclick=()=>{
+      const baseName=(modelNameInput.value || currentGitHubModelId || "local-clock-model").trim();
+      const name=saveCurrentSettingsAsLocalModel(baseName);
+      setAutostartLocalModel(name);
+      modelStatus.textContent="✅ Текущая настройка сохранена и назначена стартовой для Android-иконки: "+name;
     };
   }
 
@@ -2371,26 +2398,17 @@ async function initClockApp(){
 
   const loadedFromHash=loadSettingsFromURL();
   if(!loadedFromHash){
-    const loadedFromLocal=loadLocalModelFromQuery();
-
-    if(!loadedFromLocal){
-      const loadedFromQuery=await loadModelFromGitHubQuery();
-
-      if(!loadedFromQuery){
-        /*
-          Важно для Android/PWA:
-          установленная иконка часто запускает start_url из manifest,
-          а не тот URL, на котором пользователь нажимал "Установить".
-          Поэтому стартовую модель надо проверять ДО принудительного меню.
-          Если стартовая модель назначена, открываем её сразу.
-          Главное меню доступно по крестику из часов.
-        */
-        const loadedFromAutostart=loadAutostartLocalModel();
-
-        if(!loadedFromAutostart){
-          if(shouldShowLocalPanel()){
-            showLocalModelsPanel();
-          }else{
+    if(shouldShowLocalPanel()){
+      showLocalModelsPanel();
+    }else if(shouldForceMainMenu()){
+      await showModelPickerFromIndex();
+    }else{
+      const loadedFromLocal=loadLocalModelFromQuery();
+      if(!loadedFromLocal){
+        const loadedFromQuery=await loadModelFromGitHubQuery();
+        if(!loadedFromQuery){
+          const loadedFromAutostart=loadAutostartLocalModel();
+          if(!loadedFromAutostart){
             await showModelPickerFromIndex();
           }
         }
