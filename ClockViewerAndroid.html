@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Clock">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>Clock Viewer DEBUG AUTOSTART CLEAN</title>
+<title>Clock Viewer DEBUG AUTOSTART</title>
 <style>
 :root{--bg:#0f172a;--text:#1f2937;--muted:#64748b}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -96,8 +96,6 @@ small{display:block;color:var(--muted);margin-top:4px;line-height:1.35}
 
 #debugPanel{margin-top:12px;padding:10px;border:1px dashed #94a3b8;border-radius:10px;background:#f8fafc;color:#334155;font:12px/1.35 Consolas,monospace;white-space:pre-wrap}
 #debugPanel strong{font-family:Arial,sans-serif;font-size:13px;color:#0f172a}
-#debugOverlay{position:fixed;left:8px;bottom:8px;z-index:100;max-width:min(460px,calc(100vw - 16px));max-height:42vh;overflow:auto;padding:8px 10px;border:1px dashed #94a3b8;border-radius:10px;background:rgba(248,250,252,.92);color:#334155;font:11px/1.35 Consolas,monospace;white-space:pre-wrap;box-shadow:0 6px 18px rgba(0,0,0,.20);pointer-events:none}
-#debugOverlay strong{font-family:Arial,sans-serif;font-size:12px;color:#0f172a}
 #exitHint{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.72);color:#fff;padding:10px 16px;border-radius:12px;font-size:14px;line-height:1.35;opacity:0;pointer-events:none;transition:opacity .3s;z-index:40;box-shadow:0 6px 18px rgba(0,0,0,.28);max-width:calc(100vw - 32px);text-align:center}
 @media(max-width:520px){
   .color-grid,.hex-controls,.time-grid,.model-grid{grid-template-columns:1fr}
@@ -127,14 +125,12 @@ small{display:block;color:var(--muted);margin-top:4px;line-height:1.35}
 <button id="exitBtn" type="button" aria-label="Выход">✕</button>
 <button id="fullscreenBtn" type="button" aria-label="Полный экран">⛶</button>
 <div id="exitHint" role="status" aria-live="polite"></div>
-<div id="debugOverlay"><strong>DEBUG AUTOSTART CLEAN</strong>
-Инициализация...</div>
 
 <div class="model-picker" id="modelPicker" role="dialog" aria-modal="true" aria-labelledby="modelPickerTitle">
   <div class="model-picker-card">
     <button type="button" class="model-picker-exit" id="modelPickerExit" aria-label="Выход">✕</button>
     <h2 id="modelPickerTitle">Выбор модели часов</h2>
-    <p>DEBUG CLEAN: откройте модель или назначьте её стартовой для Android-иконки.</p>
+    <p>Откройте модель или назначьте её стартовой для Android-иконки.</p>
     <div class="model-picker-list" id="modelPickerList"></div>
     <div id="modelPickerImportBox" style="display:none;margin-top:12px;">
       <button type="button" class="done-btn secondary-btn" id="modelPickerImportJson" style="background:#0891b2;">Import LOCAL MODEL JSON</button>
@@ -2034,13 +2030,27 @@ function debugAutostart(context){
   console.log("DEBUG AUTOSTART\n"+text);
 }
 
+function cleanAddressToRootForAutostart(){
+  try{
+    const url=new URL(window.location.href);
+    url.search="";
+    url.hash="";
+    window.history.replaceState(null,"",url.toString());
+    debugAutostart("cleanAddressToRootForAutostart: URL cleaned");
+  }catch(e){
+    console.log("Не удалось очистить адрес после назначения стартовой модели:",e);
+  }
+}
+
 function setAutostartLocalModel(name){
   const localName=makeLocalModelName(name);
   try{
     localStorage.setItem(AUTOSTART_LOCAL_MODEL_KEY,localName);
-    debugAutostart("setAutostartLocalModel("+localName+")");
+    cleanAddressToRootForAutostart();
+    debugAutostart("setAutostartLocalModel: SAVED "+localName);
   }catch(e){
     console.log("Не удалось сохранить стартовую модель:",e);
+    debugAutostart("setAutostartLocalModel: ERROR "+e);
   }
 }
 
@@ -2311,12 +2321,15 @@ function makeLocalModelName(name){
 }
 
 function setAddressToLocalModel(name){
-  /* CLEAN LOGIC:
-     Не пишем ?local=... в адресную строку.
-     Android/PWA должен запускать чистый ClockViewerAndroid.html,
-     а выбранная стартовая модель берётся только из localStorage:
-     clock_autostart_local_model. */
-  debugAutostart("setAddressToLocalModel skipped for "+makeLocalModelName(name));
+  const localName=makeLocalModelName(name);
+  try{
+    const url=new URL(window.location.href);
+    url.search="?local="+encodeURIComponent(localName);
+    url.hash="";
+    window.history.replaceState(null,"",url.toString());
+  }catch(e){
+    console.log("Не удалось обновить адрес локальной модели:",e);
+  }
 }
 
 function saveCurrentSettingsAsLocalModel(name){
@@ -2328,16 +2341,6 @@ function saveCurrentSettingsAsLocalModel(name){
   currentGitHubModelId="";
   setAddressToLocalModel(localName);
   renderModelList();
-  debugAutostart("saveCurrentSettingsAsLocalModel("+localName+")");
-  return localName;
-}
-
-function makeCurrentSettingsStartModel(){
-  const baseName=(modelNameInput.value || currentGitHubModelId || "local-clock-model").trim();
-  const localName=saveCurrentSettingsAsLocalModel(baseName);
-  setAutostartLocalModel(localName);
-  modelStatus.textContent="✅ Текущая настройка сохранена и назначена стартовой: "+localName;
-  debugAutostart("makeCurrentSettingsStartModel("+localName+")");
   return localName;
 }
 
@@ -2347,7 +2350,7 @@ function isLocalModelName(name){
 
 function installLocalModelButtonHandlers(){
   const saveBtn=document.getElementById("saveModel");
-  const makeCurrentStartBtn=document.getElementById("makeCurrentStartModel");
+  const makeStartBtn=document.getElementById("makeCurrentStartModel");
   const exportBtn=document.getElementById("exportLocalModel");
   const importBtn=document.getElementById("importLocalModelButton");
   const importFile=document.getElementById("importLocalModelFile");
@@ -2375,9 +2378,22 @@ function installLocalModelButtonHandlers(){
     };
   }
 
-  if(makeCurrentStartBtn){
-    makeCurrentStartBtn.onclick=()=>{
-      makeCurrentSettingsStartModel();
+  if(makeStartBtn){
+    makeStartBtn.onclick=()=>{
+      const baseName=(modelNameInput.value || currentGitHubModelId || "local-clock-model").trim();
+      const name=makeLocalModelName(baseName);
+
+      const models=loadModels();
+      models[name]=collectCurrentSettings();
+      saveModels(models);
+
+      currentGitHubModelId="";
+      modelNameInput.value=name;
+      setAutostartLocalModel(name);
+      modelStatus.textContent="Текущая настройка сохранена как стартовая модель: "+name;
+      renderModelList();
+      if(modelPicker)modelPicker.classList.remove("active");
+      debugAutostart("makeCurrentStartModel clicked: "+name);
     };
   }
 
@@ -2446,7 +2462,7 @@ function installLocalModelButtonHandlers(){
 
 async function initClockApp(){
   installLocalModelButtonHandlers();
-  debugAutostart("initClockApp: start CLEAN");
+  debugAutostart("initClockApp: start");
   buildHexTable();
   updatePreview();
   renderCustomSvgPreview();
@@ -2454,8 +2470,6 @@ async function initClockApp(){
   renderModelList();
 
   const loadedFromHash=loadSettingsFromURL();
-  debugAutostart("initClockApp: loadedFromHash="+loadedFromHash);
-
   if(!loadedFromHash){
     if(shouldShowLocalPanel()){
       debugAutostart("initClockApp: show local panel forced");
@@ -2464,25 +2478,15 @@ async function initClockApp(){
       debugAutostart("initClockApp: main menu forced by URL");
       await showModelPickerFromIndex();
     }else{
-      /* CLEAN STARTUP ORDER:
-         1) autostart local model from localStorage;
-         2) explicit GitHub ?model=... if no autostart;
-         3) deprecated explicit ?local=... only as fallback;
-         4) main menu.
-      */
-      const loadedFromAutostart=loadAutostartLocalModel();
-      debugAutostart("initClockApp: loadedFromAutostart="+loadedFromAutostart);
-
-      if(!loadedFromAutostart){
-        const loadedFromQuery=await loadModelFromGitHubQuery();
-        debugAutostart("initClockApp: loadedFromGitHubQuery="+loadedFromQuery);
-
-        if(!loadedFromQuery){
+      const loadedFromQuery=await loadModelFromGitHubQuery();
+      debugAutostart("initClockApp: loadedFromGitHubQuery="+loadedFromQuery);
+      if(!loadedFromQuery){
+        const loadedFromAutostart=loadAutostartLocalModel();
+        debugAutostart("initClockApp: loadedFromAutostart="+loadedFromAutostart);
+        if(!loadedFromAutostart){
           const loadedFromLocal=loadLocalModelFromQuery();
-          debugAutostart("initClockApp: loadedFromLocalFallback="+loadedFromLocal);
-
+          debugAutostart("initClockApp: loadedFromLocal legacy fallback="+loadedFromLocal);
           if(!loadedFromLocal){
-            debugAutostart("initClockApp: showing menu because nothing loaded");
             await showModelPickerFromIndex();
           }
         }
