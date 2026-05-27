@@ -1905,6 +1905,13 @@ async function loadModelFromGitHubById(modelId,sourceLabel,makeAutostart=false){
     }catch(e){}
 
     if(modelPicker)modelPicker.classList.remove("active");
+
+    if(makeAutostart){
+      debugAutostart("loadModelFromGitHubById: replacing current page after start="+localName);
+      replaceCurrentPageWithAutostart();
+      return true;
+    }
+
     return true;
   }catch(e){
     const msg="Ошибка загрузки модели из GitHub: "+normalizedId;
@@ -1975,6 +1982,13 @@ function loadLocalModelByName(name,makeAutostart=false){
   modelStatus.textContent=makeAutostart
     ? "Стартовая локальная модель назначена и загружена: "+resolvedName
     : "Загружена локальная модель: "+resolvedName;
+
+  if(makeAutostart){
+    debugAutostart("loadLocalModelByName: replacing current page after start="+resolvedName);
+    replaceCurrentPageWithAutostart();
+    return true;
+  }
+
   return true;
 }
 
@@ -2048,6 +2062,20 @@ function cleanAddressToRootForAutostart(){
     debugAutostart("cleanAddressToRootForAutostart: URL cleaned");
   }catch(e){
     console.log("Не удалось очистить адрес после назначения стартовой модели:",e);
+  }
+}
+
+function replaceCurrentPageWithAutostart(){
+  /* После выбора стартовой модели заменяем текущую вкладку корневым URL.
+     Это убирает ?menu=1 из текущей страницы и не оставляет отдельную вкладку главного меню.
+     Корневой запуск сам подхватит clock_autostart_local_model из localStorage. */
+  try{
+    const url=new URL(window.location.href);
+    url.search="";
+    url.hash="";
+    window.location.replace(url.toString());
+  }catch(e){
+    window.location.replace("ClockViewerAndroid.html");
   }
 }
 
@@ -2410,6 +2438,7 @@ function installLocalModelButtonHandlers(){
       renderModelList();
       if(modelPicker)modelPicker.classList.remove("active");
       debugAutostart("makeCurrentStartModel clicked: "+name);
+      replaceCurrentPageWithAutostart();
     };
   }
 
