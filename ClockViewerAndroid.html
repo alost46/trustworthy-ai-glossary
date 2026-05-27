@@ -657,6 +657,47 @@ const STORAGE_KEY="clock_constructor_models_v6";
 const AUTOSTART_LOCAL_MODEL_KEY="clock_autostart_local_model";
 const DEBUG_AUTOSTART=false;
 
+try{
+  if(!window.location.search.includes("debug=")){
+    sessionStorage.removeItem("clock_debug_cleaned");
+  }
+}catch(e){}
+
+
+
+function cleanDebugUrlIfNotRequested(){
+  try{
+    const url = new URL(window.location.href);
+    const hasDebugParams =
+      url.searchParams.has("debug") ||
+      url.searchParams.has("fresh");
+
+    const debugFlag =
+      sessionStorage.getItem("clock_debug_once")==="1";
+
+    if(hasDebugParams && !debugFlag){
+      url.searchParams.delete("debug");
+      url.searchParams.delete("fresh");
+
+      const cleanUrl =
+        url.pathname +
+        (url.searchParams.toString()
+          ? "?" + url.searchParams.toString()
+          : "");
+
+      sessionStorage.setItem("clock_debug_cleaned","1");
+      location.replace(cleanUrl);
+      return true;
+    }
+  }catch(e){
+    console.log("cleanDebugUrlIfNotRequested error:", e);
+  }
+  return false;
+}
+cleanDebugUrlIfNotRequested();
+
+
+
 function isStandaloneLaunch(){
   return window.matchMedia("(display-mode: standalone)").matches ||
          window.navigator.standalone === true ||
@@ -688,19 +729,22 @@ stripDebugParamsIfStandalone();
 
 function isDebugRequested(){
   try{
-    if(isStandaloneLaunch()) return false;
-    return new URLSearchParams(window.location.search).get("debug")==="1";
+    return sessionStorage.getItem("clock_debug_once")==="1";
   }catch(e){
     return false;
   }
 }
-if(isDebugRequested()){
-  document.body.classList.add("debug-on");
-}
 
-if(isStandaloneLaunch()){
+if(isDebugRequested()){
+  try{ sessionStorage.removeItem("clock_debug_once"); }catch(e){}
+  document.body.classList.add("debug-on");
+  console.log("DEBUG mode requested");
+}else{
   document.body.classList.remove("debug-on");
 }
+
+
+
 
 
 const VIEWER_URL="https://alost46.github.io/trustworthy-ai-glossary/ClockViewerAndroid.html";
@@ -1623,6 +1667,7 @@ document.getElementById("saveModel").onclick=()=>{
 const launchDebugModeButton=document.getElementById("launchDebugMode");
 if(launchDebugModeButton){
   launchDebugModeButton.onclick=()=>{
+    try{ sessionStorage.setItem("clock_debug_once","1"); }catch(e){}
     const url=new URL(window.location.href);
     url.searchParams.set("debug","1");
     url.searchParams.set("fresh",String(Date.now()));
