@@ -657,8 +657,38 @@ const STORAGE_KEY="clock_constructor_models_v6";
 const AUTOSTART_LOCAL_MODEL_KEY="clock_autostart_local_model";
 const DEBUG_AUTOSTART=false;
 
+function isStandaloneLaunch(){
+  return window.matchMedia("(display-mode: standalone)").matches ||
+         window.navigator.standalone === true ||
+         document.referrer.startsWith("android-app://");
+}
+
+function stripDebugParamsIfStandalone(){
+  try{
+    const url = new URL(window.location.href);
+    const hasDebug =
+      url.searchParams.has("debug") ||
+      url.searchParams.has("fresh") ||
+      url.searchParams.has("menu") ||
+      url.searchParams.has("local") ||
+      url.searchParams.has("v");
+
+    if(isStandaloneLaunch() && hasDebug){
+      history.replaceState({}, "", "ClockViewerAndroid.html");
+      return true;
+    }
+  }catch(e){
+    console.log("stripDebugParamsIfStandalone error:", e);
+  }
+  return false;
+}
+
+stripDebugParamsIfStandalone();
+
+
 function isDebugRequested(){
   try{
+    if(isStandaloneLaunch()) return false;
     return new URLSearchParams(window.location.search).get("debug")==="1";
   }catch(e){
     return false;
@@ -667,6 +697,11 @@ function isDebugRequested(){
 if(isDebugRequested()){
   document.body.classList.add("debug-on");
 }
+
+if(isStandaloneLaunch()){
+  document.body.classList.remove("debug-on");
+}
+
 
 const VIEWER_URL="https://alost46.github.io/trustworthy-ai-glossary/ClockViewerAndroid.html";
 
@@ -683,7 +718,8 @@ function makeCleanProductionUrl(){
 
 function cleanUrlBeforeInstall(){
   try{
-    history.replaceState({}, "", "ClockViewerAndroid.html");
+    const clean = location.origin + location.pathname.replace(/[^/]*$/, "ClockViewerAndroid.html");
+    history.replaceState({}, "", clean);
   }catch(e){
     console.log("Cannot clean URL before install:", e);
   }
