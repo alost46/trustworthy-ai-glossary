@@ -94,11 +94,22 @@ small{display:block;color:var(--muted);margin-top:4px;line-height:1.35}
 #exitBtn.two-button-left{left:calc(50% - 39px);transform:translateX(-50%)}
 #fullscreenBtn.two-button-right{left:calc(50% + 39px);transform:translateX(-50%)}
 
-#debugPanel{display:none;margin-top:12px;padding:10px;border:1px dashed #94a3b8;border-radius:10px;background:#f8fafc;color:#334155;font:12px/1.35 Consolas,monospace;white-space:pre-wrap}
-#debugPanel strong{font-family:Arial,sans-serif;font-size:13px;color:#0f172a}
-#debugFloatingPanel{display:none;position:fixed;left:10px;bottom:10px;z-index:1000;max-width:min(520px,calc(100vw - 20px));max-height:45vh;overflow:auto;padding:10px;border:1px dashed #94a3b8;border-radius:10px;background:rgba(248,250,252,.94);color:#334155;font:12px/1.35 Consolas,monospace;white-space:pre-wrap;box-shadow:0 6px 20px rgba(0,0,0,.25)}
-#debugFloatingPanel strong{font-family:Arial,sans-serif;font-size:13px;color:#0f172a}
+
+
+.install-prompt-panel{display:none;position:fixed;left:50%;bottom:18px;transform:translateX(-50%);z-index:80;width:min(460px,calc(100vw - 28px));background:rgba(255,255,255,.96);color:#0f172a;border:1px solid #cbd5e1;border-radius:16px;padding:12px;box-shadow:0 12px 36px rgba(0,0,0,.32)}
+.install-prompt-panel.active{display:block}
+.install-prompt-title{font-weight:bold;margin-bottom:4px}
+.install-prompt-text{font-size:13px;line-height:1.35;color:#475569;margin-bottom:10px}
+.install-prompt-actions{display:grid;grid-template-columns:1fr auto;gap:8px}
+.install-prompt-actions button{border:none;border-radius:10px;padding:9px 10px;font-weight:bold;cursor:pointer}
+#installPromptButton{background:#059669;color:#fff}
+#installPromptButton:disabled{background:#94a3b8;color:#e2e8f0;cursor:not-allowed}
+#installPromptClose{background:#e2e8f0;color:#0f172a}
 body.debug-on #debugPanel,body.debug-on #debugFloatingPanel{display:block}
+#debugFloatingPanel{display:none;position:fixed;left:10px;bottom:10px;z-index:1000;max-width:min(520px,calc(100vw - 20px));max-height:45vh;overflow:auto;padding:10px;border:1px dashed #94a3b8;border-radius:10px;background:rgba(248,250,252,.94);color:#334155;font:12px/1.35 Consolas,monospace;white-space:pre-wrap;box-shadow:0 6px 20px rgba(0,0,0,.25)}
+#debugPanel{display:none;margin-top:12px;padding:10px;border:1px dashed #94a3b8;border-radius:10px;background:#f8fafc;color:#334155;font:12px/1.35 Consolas,monospace;white-space:pre-wrap}
+#debugFloatingPanel strong,#debugPanel strong{font-family:Arial,sans-serif;font-size:13px;color:#0f172a}
+
 #exitHint{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.72);color:#fff;padding:10px 16px;border-radius:12px;font-size:14px;line-height:1.35;opacity:0;pointer-events:none;transition:opacity .3s;z-index:40;box-shadow:0 6px 18px rgba(0,0,0,.28);max-width:calc(100vw - 32px);text-align:center}
 @media(max-width:520px){
   .color-grid,.hex-controls,.time-grid,.model-grid{grid-template-columns:1fr}
@@ -128,8 +139,15 @@ body.debug-on #debugPanel,body.debug-on #debugFloatingPanel{display:block}
 <button id="exitBtn" type="button" aria-label="Выход">✕</button>
 <button id="fullscreenBtn" type="button" aria-label="Полный экран">⛶</button>
 <div id="exitHint" role="status" aria-live="polite"></div>
-<div id="debugFloatingPanel"><strong>DEBUG AUTOSTART CLEAN</strong>
-Инициализация...</div>
+<div id="installPromptPanel" class="install-prompt-panel" aria-live="polite">
+  <div class="install-prompt-title">Стартовая модель сохранена</div>
+  <div class="install-prompt-text" id="installPromptText">Можно создать иконку часов на главном экране.</div>
+  <div class="install-prompt-actions">
+    <button type="button" id="installPromptButton">Создать иконку часов</button>
+    <button type="button" id="installPromptClose">Скрыть</button>
+  </div>
+</div>
+
 
 <div class="model-picker" id="modelPicker" role="dialog" aria-modal="true" aria-labelledby="modelPickerTitle">
   <div class="model-picker-card">
@@ -142,8 +160,6 @@ body.debug-on #debugPanel,body.debug-on #debugFloatingPanel{display:block}
       <small>Если вместе с HTML вам прислали JSON-модель, импортируйте её здесь. Полный конструктор открывается длительным нажатием на циферблат.</small>
     </div>
     <div class="model-picker-status" id="modelPickerStatus">Загружаю список моделей…</div>
-    <div id="debugPanel"><strong>DEBUG AUTOSTART CLEAN</strong>
-Инициализация...</div>
   </div>
 </div>
 
@@ -467,6 +483,78 @@ function arrangeTopButtons(){
 }
 
 arrangeTopButtons();
+
+let deferredInstallPrompt=null;
+
+window.addEventListener("beforeinstallprompt",event=>{
+  event.preventDefault();
+  deferredInstallPrompt=event;
+  console.log("beforeinstallprompt captured");
+});
+
+window.addEventListener("appinstalled",()=>{
+  deferredInstallPrompt=null;
+  hideInstallPromptPanel();
+  console.log("Clock PWA installed");
+});
+
+function getInstallPromptElements(){
+  return {
+    panel:document.getElementById("installPromptPanel"),
+    text:document.getElementById("installPromptText"),
+    button:document.getElementById("installPromptButton"),
+    close:document.getElementById("installPromptClose")
+  };
+}
+
+function hideInstallPromptPanel(){
+  const els=getInstallPromptElements();
+  if(els.panel)els.panel.classList.remove("active");
+}
+
+function showInstallPromptPanel(message){
+  const els=getInstallPromptElements();
+  if(!els.panel)return;
+  els.panel.classList.add("active");
+  if(els.text){
+    els.text.textContent=message || "Стартовая модель сохранена. Можно создать иконку часов на главном экране.";
+  }
+  if(els.button){
+    els.button.disabled=!deferredInstallPrompt;
+    els.button.textContent=deferredInstallPrompt ? "Создать иконку часов" : "Создать иконку через меню Chrome ⋮";
+  }
+}
+
+async function runInstallPromptFromButton(){
+  const els=getInstallPromptElements();
+  if(!deferredInstallPrompt){
+    if(els.text){
+      els.text.textContent="Chrome сейчас не выдал системный диалог установки. Используйте меню ⋮ → Добавить на главный экран / Создать ярлык.";
+    }
+    if(els.button)els.button.disabled=true;
+    return;
+  }
+  const promptEvent=deferredInstallPrompt;
+  deferredInstallPrompt=null;
+  try{
+    promptEvent.prompt();
+    const choice=await promptEvent.userChoice;
+    if(els.text){
+      els.text.textContent="Результат установки: "+(choice && choice.outcome ? choice.outcome : "unknown");
+    }
+  }catch(e){
+    console.log("Install prompt error:",e);
+    if(els.text)els.text.textContent="Не удалось открыть системный диалог установки. Используйте меню Chrome ⋮.";
+  }
+  if(els.button)els.button.disabled=true;
+}
+
+function initInstallPromptPanel(){
+  const els=getInstallPromptElements();
+  if(els.button)els.button.onclick=runInstallPromptFromButton;
+  if(els.close)els.close.onclick=hideInstallPromptPanel;
+}
+
 
 /* Production/PWA mode: service worker stays registered.
    Android installation uses manifest + service worker + start_url. */
@@ -2063,8 +2151,30 @@ function getDebugAutostartText(context){
   ].join("\n");
 }
 
+
+function ensureDebugPanels(){
+  if(!isDebugRequested() && !DEBUG_AUTOSTART)return;
+  document.body.classList.add("debug-on");
+
+  if(!document.getElementById("debugFloatingPanel")){
+    const floating=document.createElement("div");
+    floating.id="debugFloatingPanel";
+    floating.innerHTML="<strong>DEBUG AUTOSTART CLEAN</strong>\nИнициализация...";
+    document.body.appendChild(floating);
+  }
+
+  if(modelPicker && !document.getElementById("debugPanel")){
+    const panel=document.createElement("div");
+    panel.id="debugPanel";
+    panel.innerHTML="<strong>DEBUG AUTOSTART CLEAN</strong>\nИнициализация...";
+    const card=modelPicker.querySelector(".model-picker-card");
+    if(card)card.appendChild(panel);
+  }
+}
+
 function debugAutostart(context){
   if(!DEBUG_AUTOSTART && !isDebugRequested())return;
+  ensureDebugPanels();
   const text=getDebugAutostartText(context);
   const html="<strong>DEBUG AUTOSTART CLEAN</strong>\n"+
     text.replace(/[&<>]/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[ch]));
@@ -2091,17 +2201,32 @@ function cleanAddressToRootForAutostart(){
 }
 
 function replaceCurrentPageWithAutostart(){
-  /* После выбора стартовой модели заменяем текущую вкладку корневым URL.
-     Это убирает ?menu=1 из текущей страницы и не оставляет отдельную вкладку главного меню.
-     Корневой запуск сам подхватит clock_autostart_local_model из localStorage. */
+  /* После выбора стартовой модели НЕ открываем новую вкладку и не оставляем меню.
+     Чистим URL, закрываем меню, запускаем выбранную модель в этой же странице.
+     Если Chrome разрешил beforeinstallprompt, показываем кнопку создания иконки. */
   try{
     const url=new URL(window.location.href);
     url.search="";
     url.hash="";
-    window.location.replace(url.toString());
+    window.history.replaceState(null,"",url.toString());
   }catch(e){
-    window.location.replace("ClockViewerAndroid.html");
+    console.log("replaceCurrentPageWithAutostart URL clean error:",e);
   }
+
+  if(modelPicker)modelPicker.classList.remove("active");
+  panel.classList.remove("active");
+  setConstructorMode(false);
+
+  const ok=loadAutostartLocalModel();
+  debugAutostart("replaceCurrentPageWithAutostart: same-page autostart result="+ok);
+
+  showInstallPromptPanel(
+    deferredInstallPrompt
+      ? "Стартовая модель сохранена и открыта. Можно создать иконку часов на главном экране."
+      : "Стартовая модель сохранена и открыта. Если нужна иконка, используйте меню Chrome ⋮ → Добавить на главный экран / Создать ярлык."
+  );
+
+  return ok;
 }
 
 function setAutostartLocalModel(name){
@@ -2532,6 +2657,7 @@ function installLocalModelButtonHandlers(){
 
 async function initClockApp(){
   installLocalModelButtonHandlers();
+  initInstallPromptPanel();
   debugAutostart("initClockApp: start CLEAN LOGIC");
   buildHexTable();
   updatePreview();
