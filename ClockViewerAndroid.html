@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Clock">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>Clock Viewer DEBUG AUTOSTART CLEAN</title>
+<title>Clock Viewer</title>
 <style>
 :root{--bg:#0f172a;--text:#1f2937;--muted:#64748b}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -94,10 +94,11 @@ small{display:block;color:var(--muted);margin-top:4px;line-height:1.35}
 #exitBtn.two-button-left{left:calc(50% - 39px);transform:translateX(-50%)}
 #fullscreenBtn.two-button-right{left:calc(50% + 39px);transform:translateX(-50%)}
 
-#debugPanel{margin-top:12px;padding:10px;border:1px dashed #94a3b8;border-radius:10px;background:#f8fafc;color:#334155;font:12px/1.35 Consolas,monospace;white-space:pre-wrap}
+#debugPanel{display:none;margin-top:12px;padding:10px;border:1px dashed #94a3b8;border-radius:10px;background:#f8fafc;color:#334155;font:12px/1.35 Consolas,monospace;white-space:pre-wrap}
 #debugPanel strong{font-family:Arial,sans-serif;font-size:13px;color:#0f172a}
-#debugFloatingPanel{position:fixed;left:10px;bottom:10px;z-index:1000;max-width:min(520px,calc(100vw - 20px));max-height:45vh;overflow:auto;padding:10px;border:1px dashed #94a3b8;border-radius:10px;background:rgba(248,250,252,.94);color:#334155;font:12px/1.35 Consolas,monospace;white-space:pre-wrap;box-shadow:0 6px 20px rgba(0,0,0,.25)}
+#debugFloatingPanel{display:none;position:fixed;left:10px;bottom:10px;z-index:1000;max-width:min(520px,calc(100vw - 20px));max-height:45vh;overflow:auto;padding:10px;border:1px dashed #94a3b8;border-radius:10px;background:rgba(248,250,252,.94);color:#334155;font:12px/1.35 Consolas,monospace;white-space:pre-wrap;box-shadow:0 6px 20px rgba(0,0,0,.25)}
 #debugFloatingPanel strong{font-family:Arial,sans-serif;font-size:13px;color:#0f172a}
+body.debug-on #debugPanel,body.debug-on #debugFloatingPanel{display:block}
 #exitHint{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.72);color:#fff;padding:10px 16px;border-radius:12px;font-size:14px;line-height:1.35;opacity:0;pointer-events:none;transition:opacity .3s;z-index:40;box-shadow:0 6px 18px rgba(0,0,0,.28);max-width:calc(100vw - 32px);text-align:center}
 @media(max-width:520px){
   .color-grid,.hex-controls,.time-grid,.model-grid{grid-template-columns:1fr}
@@ -174,6 +175,7 @@ small{display:block;color:var(--muted);margin-top:4px;line-height:1.35}
           <button type="button" class="done-btn secondary-btn" id="importLocalModelButton" style="background:#0891b2;">Import LOCAL MODEL JSON</button>
           <input type="file" id="importLocalModelFile" accept=".json,application/json" style="display:none">
           <button type="button" class="done-btn secondary-btn" id="createLocalLink" style="background:#7c3aed;">Create LOCAL LINK</button>
+          <button type="button" class="done-btn secondary-btn" id="launchDebugMode" style="background:#f97316;">Запустить с DEBUG</button>
         </div>
       </div>
 
@@ -565,7 +567,19 @@ let customSvgCacheKey="";
 
 const STORAGE_KEY="clock_constructor_models_v6";
 const AUTOSTART_LOCAL_MODEL_KEY="clock_autostart_local_model";
-const DEBUG_AUTOSTART=true;
+const DEBUG_AUTOSTART=false;
+
+function isDebugRequested(){
+  try{
+    return new URLSearchParams(window.location.search).get("debug")==="1";
+  }catch(e){
+    return false;
+  }
+}
+if(isDebugRequested()){
+  document.body.classList.add("debug-on");
+}
+
 const VIEWER_URL="https://alost46.github.io/trustworthy-ai-glossary/ClockViewerAndroid.html";
 let currentGitHubModelId="";
 
@@ -1461,6 +1475,17 @@ document.getElementById("saveModel").onclick=()=>{
   saveLocalModelByName(modelNameInput.value,collectCurrentSettings());
 };
 
+
+const launchDebugModeButton=document.getElementById("launchDebugMode");
+if(launchDebugModeButton){
+  launchDebugModeButton.onclick=()=>{
+    const url=new URL(window.location.href);
+    url.searchParams.set("debug","1");
+    url.searchParams.set("fresh",String(Date.now()));
+    window.location.href=url.toString();
+  };
+}
+
 document.getElementById("createLocalLink").onclick=()=>{
   const rawName=(modelNameInput.value || currentGitHubModelId || "").trim();
 
@@ -2039,7 +2064,7 @@ function getDebugAutostartText(context){
 }
 
 function debugAutostart(context){
-  if(!DEBUG_AUTOSTART)return;
+  if(!DEBUG_AUTOSTART && !isDebugRequested())return;
   const text=getDebugAutostartText(context);
   const html="<strong>DEBUG AUTOSTART CLEAN</strong>\n"+
     text.replace(/[&<>]/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[ch]));
