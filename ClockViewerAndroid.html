@@ -105,10 +105,10 @@ small{display:block;color:var(--muted);margin-top:4px;line-height:1.35}
 #installPromptButton{background:#059669;color:#fff}
 #installPromptButton:disabled{background:#94a3b8;color:#e2e8f0;cursor:not-allowed}
 #installPromptClose{background:#e2e8f0;color:#0f172a}
-body.debug-on #debugPanel,body.debug-on #debugFloatingPanel{display:block}
 #debugFloatingPanel{display:none;position:fixed;left:10px;bottom:10px;z-index:1000;max-width:min(520px,calc(100vw - 20px));max-height:45vh;overflow:auto;padding:10px;border:1px dashed #94a3b8;border-radius:10px;background:rgba(248,250,252,.94);color:#334155;font:12px/1.35 Consolas,monospace;white-space:pre-wrap;box-shadow:0 6px 20px rgba(0,0,0,.25)}
 #debugPanel{display:none;margin-top:12px;padding:10px;border:1px dashed #94a3b8;border-radius:10px;background:#f8fafc;color:#334155;font:12px/1.35 Consolas,monospace;white-space:pre-wrap}
 #debugFloatingPanel strong,#debugPanel strong{font-family:Arial,sans-serif;font-size:13px;color:#0f172a}
+body.debug-on #debugPanel,body.debug-on #debugFloatingPanel{display:block}
 
 #exitHint{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.72);color:#fff;padding:10px 16px;border-radius:12px;font-size:14px;line-height:1.35;opacity:0;pointer-events:none;transition:opacity .3s;z-index:40;box-shadow:0 6px 18px rgba(0,0,0,.28);max-width:calc(100vw - 32px);text-align:center}
 @media(max-width:520px){
@@ -537,6 +537,7 @@ async function runInstallPromptFromButton(){
   const promptEvent=deferredInstallPrompt;
   deferredInstallPrompt=null;
   try{
+    cleanUrlBeforeInstall();
     promptEvent.prompt();
     const choice=await promptEvent.userChoice;
     if(els.text){
@@ -657,75 +658,6 @@ const STORAGE_KEY="clock_constructor_models_v6";
 const AUTOSTART_LOCAL_MODEL_KEY="clock_autostart_local_model";
 const DEBUG_AUTOSTART=false;
 
-try{
-  if(!window.location.search.includes("debug=")){
-    sessionStorage.removeItem("clock_debug_cleaned");
-  }
-}catch(e){}
-
-
-
-function cleanDebugUrlIfNotRequested(){
-  try{
-    const url = new URL(window.location.href);
-    const hasDebugParams =
-      url.searchParams.has("debug") ||
-      url.searchParams.has("fresh");
-
-    const debugFlag =
-      sessionStorage.getItem("clock_debug_once")==="1";
-
-    if(hasDebugParams && !debugFlag){
-      url.searchParams.delete("debug");
-      url.searchParams.delete("fresh");
-
-      const cleanUrl =
-        url.pathname +
-        (url.searchParams.toString()
-          ? "?" + url.searchParams.toString()
-          : "");
-
-      sessionStorage.setItem("clock_debug_cleaned","1");
-      location.replace(cleanUrl);
-      return true;
-    }
-  }catch(e){
-    console.log("cleanDebugUrlIfNotRequested error:", e);
-  }
-  return false;
-}
-cleanDebugUrlIfNotRequested();
-
-
-
-function isStandaloneLaunch(){
-  return window.matchMedia("(display-mode: standalone)").matches ||
-         window.navigator.standalone === true ||
-         document.referrer.startsWith("android-app://");
-}
-
-function stripDebugParamsIfStandalone(){
-  try{
-    const url = new URL(window.location.href);
-    const hasDebug =
-      url.searchParams.has("debug") ||
-      url.searchParams.has("fresh") ||
-      url.searchParams.has("menu") ||
-      url.searchParams.has("local") ||
-      url.searchParams.has("v");
-
-    if(isStandaloneLaunch() && hasDebug){
-      history.replaceState({}, "", "ClockViewerAndroid.html");
-      return true;
-    }
-  }catch(e){
-    console.log("stripDebugParamsIfStandalone error:", e);
-  }
-  return false;
-}
-
-stripDebugParamsIfStandalone();
-
 
 function isDebugRequested(){
   try{
@@ -742,10 +674,6 @@ if(isDebugRequested()){
 }else{
   document.body.classList.remove("debug-on");
 }
-
-
-
-
 
 const VIEWER_URL="https://alost46.github.io/trustworthy-ai-glossary/ClockViewerAndroid.html";
 
@@ -1631,7 +1559,7 @@ function saveLocalModelByName(name,settings){
   saveModels(models);
   modelNameInput.value=rawName;
   currentGitHubModelId="";
-  setAddressToLocalModel(rawName);
+  // setAddressToLocalModel(rawName);
   modelStatus.textContent="Локальная модель сохранена на этом устройстве: "+rawName;
   renderModelList();
   return true;
