@@ -669,6 +669,26 @@ if(isDebugRequested()){
 }
 
 const VIEWER_URL="https://alost46.github.io/trustworthy-ai-glossary/ClockViewerAndroid.html";
+
+function makeCleanProductionUrl(){
+  const url = new URL(window.location.href);
+  url.searchParams.delete("debug");
+  url.searchParams.delete("fresh");
+  url.searchParams.delete("menu");
+  url.searchParams.delete("local");
+  url.searchParams.delete("v");
+  url.hash = "";
+  return url.pathname.split("/").pop() || "ClockViewerAndroid.html";
+}
+
+function cleanUrlBeforeInstall(){
+  try{
+    history.replaceState({}, "", "ClockViewerAndroid.html");
+  }catch(e){
+    console.log("Cannot clean URL before install:", e);
+  }
+}
+
 let currentGitHubModelId="";
 
 const colorMap={
