@@ -105,11 +105,6 @@ small{display:block;color:var(--muted);margin-top:4px;line-height:1.35}
 #installPromptButton{background:#059669;color:#fff}
 #installPromptButton:disabled{background:#94a3b8;color:#e2e8f0;cursor:not-allowed}
 #installPromptClose{background:#e2e8f0;color:#0f172a}
-#debugFloatingPanel{display:none;position:fixed;left:10px;bottom:10px;z-index:1000;max-width:min(520px,calc(100vw - 20px));max-height:45vh;overflow:auto;padding:10px;border:1px dashed #94a3b8;border-radius:10px;background:rgba(248,250,252,.94);color:#334155;font:12px/1.35 Consolas,monospace;white-space:pre-wrap;box-shadow:0 6px 20px rgba(0,0,0,.25)}
-#debugPanel{display:none;margin-top:12px;padding:10px;border:1px dashed #94a3b8;border-radius:10px;background:#f8fafc;color:#334155;font:12px/1.35 Consolas,monospace;white-space:pre-wrap}
-#debugFloatingPanel strong,#debugPanel strong{font-family:Arial,sans-serif;font-size:13px;color:#0f172a}
-body.debug-on #debugPanel,body.debug-on #debugFloatingPanel{display:block}
-
 #exitHint{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.72);color:#fff;padding:10px 16px;border-radius:12px;font-size:14px;line-height:1.35;opacity:0;pointer-events:none;transition:opacity .3s;z-index:40;box-shadow:0 6px 18px rgba(0,0,0,.28);max-width:calc(100vw - 32px);text-align:center}
 @media(max-width:520px){
   .color-grid,.hex-controls,.time-grid,.model-grid{grid-template-columns:1fr}
@@ -191,7 +186,6 @@ body.debug-on #debugPanel,body.debug-on #debugFloatingPanel{display:block}
           <button type="button" class="done-btn secondary-btn" id="importLocalModelButton" style="background:#0891b2;">Import LOCAL MODEL JSON</button>
           <input type="file" id="importLocalModelFile" accept=".json,application/json" style="display:none">
           <button type="button" class="done-btn secondary-btn" id="createLocalLink" style="background:#7c3aed;">Create LOCAL LINK</button>
-          <button type="button" class="done-btn secondary-btn" id="launchDebugMode" style="background:#f97316;">Запустить с DEBUG</button>
         </div>
       </div>
 
@@ -384,6 +378,32 @@ body.debug-on #debugPanel,body.debug-on #debugFloatingPanel{display:block}
 </div>
 
 <script>
+
+/* DEBUG permanently removed in this production file.
+   This protects Android/PWA icons from carrying old DEBUG state. */
+(function removeDebugResidue(){
+  try{
+    sessionStorage.removeItem("clock_debug_once");
+    sessionStorage.removeItem("clock_debug_cleaned");
+  }catch(e){}
+  try{
+    document.body.classList.remove("debug-on");
+  }catch(e){}
+  try{
+    const url=new URL(window.location.href);
+    let changed=false;
+    ["debug","fresh","v"].forEach(key=>{
+      if(url.searchParams.has(key)){
+        url.searchParams.delete(key);
+        changed=true;
+      }
+    });
+    if(changed){
+      history.replaceState({},"",url.pathname+(url.searchParams.toString()?"?"+url.searchParams.toString():"")+url.hash);
+    }
+  }catch(e){}
+})();
+
 const canvas=document.getElementById("clock");
 const ctx=canvas.getContext("2d");
 const panel=document.getElementById("settingsPanel");
@@ -526,7 +546,6 @@ function showInstallPromptPanel(message){
 }
 
 async function runInstallPromptFromButton(){
-  clearDebugState();
   const els=getInstallPromptElements();
   if(!deferredInstallPrompt){
     if(els.text){
@@ -659,44 +678,6 @@ const STORAGE_KEY="clock_constructor_models_v6";
 const AUTOSTART_LOCAL_MODEL_KEY="clock_autostart_local_model";
 const DEBUG_AUTOSTART=false;
 
-
-function isDebugRequested(){
-  /* DEBUG разрешён только для явного запуска кнопкой "Запустить с DEBUG":
-     1) кнопка ставит sessionStorage clock_debug_once=1
-     2) кнопка добавляет в адрес ?debug=1
-     При запуске Android/PWA-иконкой sessionStorage иногда может сохраниться,
-     поэтому одного sessionStorage недостаточно. */
-  try{
-    const params=new URLSearchParams(window.location.search);
-    return sessionStorage.getItem("clock_debug_once")==="1" && params.get("debug")==="1";
-  }catch(e){
-    return false;
-  }
-}
-
-function clearDebugState(){
-  try{
-    sessionStorage.removeItem("clock_debug_once");
-    sessionStorage.removeItem("clock_debug_cleaned");
-  }catch(e){}
-
-  document.body.classList.remove("debug-on");
-
-  try{
-    const floating=document.getElementById("debugFloatingPanel");
-    if(floating)floating.remove();
-    const panel=document.getElementById("debugPanel");
-    if(panel)panel.remove();
-  }catch(e){}
-}
-
-if(isDebugRequested()){
-  try{ sessionStorage.removeItem("clock_debug_once"); }catch(e){}
-  document.body.classList.add("debug-on");
-  console.log("DEBUG mode requested");
-}else{
-  clearDebugState();
-}
 
 const VIEWER_URL="https://alost46.github.io/trustworthy-ai-glossary/ClockViewerAndroid.html";
 
@@ -1615,17 +1596,6 @@ document.getElementById("saveModel").onclick=()=>{
 };
 
 
-const launchDebugModeButton=document.getElementById("launchDebugMode");
-if(launchDebugModeButton){
-  launchDebugModeButton.onclick=()=>{
-    try{ sessionStorage.setItem("clock_debug_once","1"); }catch(e){}
-    const url=new URL(window.location.href);
-    url.searchParams.set("debug","1");
-    url.searchParams.set("fresh",String(Date.now()));
-    window.location.href=url.toString();
-  };
-}
-
 document.getElementById("createLocalLink").onclick=()=>{
   const rawName=(modelNameInput.value || currentGitHubModelId || "").trim();
 
@@ -2241,7 +2211,6 @@ function debugAutostart(context){
 }
 
 function cleanAddressToRootForAutostart(){
-  clearDebugState();
   try{
     const url=new URL(window.location.href);
     url.search="";
@@ -2254,7 +2223,6 @@ function cleanAddressToRootForAutostart(){
 }
 
 function replaceCurrentPageWithAutostart(){
-  clearDebugState();
   /* После выбора стартовой модели НЕ открываем новую вкладку и не оставляем меню.
      Чистим URL, закрываем меню, запускаем выбранную модель в этой же странице.
      Если Chrome разрешил beforeinstallprompt, показываем кнопку создания иконки. */
@@ -2284,7 +2252,6 @@ function replaceCurrentPageWithAutostart(){
 }
 
 function setAutostartLocalModel(name){
-  clearDebugState();
   const localName=makeLocalModelName(name);
   try{
     localStorage.setItem(AUTOSTART_LOCAL_MODEL_KEY,localName);
@@ -2327,7 +2294,6 @@ function openMainModelMenu(){
 }
 
 function loadAutostartLocalModel(){
-  if(!isDebugRequested())clearDebugState();
   debugAutostart("loadAutostartLocalModel: before read");
   const name=getAutostartLocalModel();
   if(!name){
