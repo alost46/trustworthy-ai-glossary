@@ -675,6 +675,20 @@ if(isDebugRequested()){
   document.body.classList.remove("debug-on");
 }
 
+function turnOffDebugMode(){
+  try{ sessionStorage.removeItem("clock_debug_once"); }catch(e){}
+  document.body.classList.remove("debug-on");
+
+  try{
+    const url=new URL(window.location.href);
+    if(url.searchParams.has("debug") || url.searchParams.has("fresh")){
+      url.searchParams.delete("debug");
+      url.searchParams.delete("fresh");
+      window.history.replaceState(null,"",url.toString());
+    }
+  }catch(e){}
+}
+
 const VIEWER_URL="https://alost46.github.io/trustworthy-ai-glossary/ClockViewerAndroid.html";
 
 function makeCleanProductionUrl(){
@@ -2291,6 +2305,8 @@ function shouldForceMainMenu(){
 }
 
 function openMainModelMenu(){
+  turnOffDebugMode();
+
   try{
     const url=new URL(window.location.href);
     url.search="?menu=1";
