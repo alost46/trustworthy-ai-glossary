@@ -659,34 +659,54 @@ const AUTOSTART_LOCAL_MODEL_KEY="clock_autostart_local_model";
 const DEBUG_AUTOSTART=false;
 
 
-function isDebugRequested(){
+let DEBUG_MODE_ACTIVE=false;
+
+function hasExplicitDebugLaunchRequest(){
   try{
-    return sessionStorage.getItem("clock_debug_once")==="1";
+    const params=new URLSearchParams(location.search);
+    return params.get("debug")==="1" && sessionStorage.getItem("clock_debug_once")==="1";
   }catch(e){
     return false;
   }
 }
 
-if(isDebugRequested()){
+function isDebugRequested(){
+  return DEBUG_MODE_ACTIVE;
+}
+
+function clearDebugLaunchState(cleanUrl=false){
+  try{
+    sessionStorage.removeItem("clock_debug_once");
+    sessionStorage.removeItem("clock_debug_cleaned");
+  }catch(e){}
+
+  if(cleanUrl){
+    try{
+      const url=new URL(window.location.href);
+      url.searchParams.delete("debug");
+      url.searchParams.delete("fresh");
+      url.searchParams.delete("v");
+      history.replaceState(null,"",url.toString());
+    }catch(e){}
+  }
+
+  if(!DEBUG_MODE_ACTIVE){
+    document.body.classList.remove("debug-on");
+    const floating=document.getElementById("debugFloatingPanel");
+    if(floating)floating.remove();
+    const panel=document.getElementById("debugPanel");
+    if(panel)panel.remove();
+  }
+}
+
+if(hasExplicitDebugLaunchRequest()){
+  DEBUG_MODE_ACTIVE=true;
   try{ sessionStorage.removeItem("clock_debug_once"); }catch(e){}
   document.body.classList.add("debug-on");
   console.log("DEBUG mode requested");
 }else{
-  document.body.classList.remove("debug-on");
-}
-
-function turnOffDebugMode(){
-  try{ sessionStorage.removeItem("clock_debug_once"); }catch(e){}
-  document.body.classList.remove("debug-on");
-
-  try{
-    const url=new URL(window.location.href);
-    if(url.searchParams.has("debug") || url.searchParams.has("fresh")){
-      url.searchParams.delete("debug");
-      url.searchParams.delete("fresh");
-      window.history.replaceState(null,"",url.toString());
-    }
-  }catch(e){}
+  DEBUG_MODE_ACTIVE=false;
+  clearDebugLaunchState(true);
 }
 
 const VIEWER_URL="https://alost46.github.io/trustworthy-ai-glossary/ClockViewerAndroid.html";
@@ -703,6 +723,7 @@ function makeCleanProductionUrl(){
 }
 
 function cleanUrlBeforeInstall(){
+  clearDebugLaunchState(true);
   try{
     const clean = location.origin + location.pathname.replace(/[^/]*$/, "ClockViewerAndroid.html");
     history.replaceState({}, "", clean);
@@ -2232,6 +2253,7 @@ function debugAutostart(context){
 }
 
 function cleanAddressToRootForAutostart(){
+  clearDebugLaunchState(true);
   try{
     const url=new URL(window.location.href);
     url.search="";
@@ -2247,6 +2269,7 @@ function replaceCurrentPageWithAutostart(){
   /* После выбора стартовой модели НЕ открываем новую вкладку и не оставляем меню.
      Чистим URL, закрываем меню, запускаем выбранную модель в этой же странице.
      Если Chrome разрешил beforeinstallprompt, показываем кнопку создания иконки. */
+  clearDebugLaunchState(true);
   try{
     const url=new URL(window.location.href);
     url.search="";
@@ -2273,6 +2296,7 @@ function replaceCurrentPageWithAutostart(){
 }
 
 function setAutostartLocalModel(name){
+  clearDebugLaunchState(true);
   const localName=makeLocalModelName(name);
   try{
     localStorage.setItem(AUTOSTART_LOCAL_MODEL_KEY,localName);
@@ -2305,8 +2329,6 @@ function shouldForceMainMenu(){
 }
 
 function openMainModelMenu(){
-  turnOffDebugMode();
-
   try{
     const url=new URL(window.location.href);
     url.search="?menu=1";
@@ -2317,6 +2339,7 @@ function openMainModelMenu(){
 }
 
 function loadAutostartLocalModel(){
+  if(!DEBUG_MODE_ACTIVE)clearDebugLaunchState(true);
   debugAutostart("loadAutostartLocalModel: before read");
   const name=getAutostartLocalModel();
   if(!name){
