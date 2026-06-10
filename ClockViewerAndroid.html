@@ -1523,8 +1523,7 @@ function restoreAllLocalDataFromObject(obj){
   const normalizedModels={};
 
   Object.keys(models).forEach(name=>{
-    forceProductionMode();
-  const localName=makeLocalModelName(name);
+    const localName=makeLocalModelName(name);
     normalizedModels[localName]=models[name];
   });
 
@@ -2259,23 +2258,36 @@ function replaceCurrentPageWithAutostart(){
   return ok;
 }
 
-
 function forceProductionMode(){
+  /* Жёстко выключаем DEBUG только для обычного production-запуска.
+     ВАЖНО: не трогаем параметры ?menu, ?model, ?local, чтобы не ломать главное меню и ручной выбор модели. */
   try{
     sessionStorage.removeItem("clock_debug_once");
     sessionStorage.removeItem("clock_debug_cleaned");
   }catch(e){}
+
   document.body.classList.remove("debug-on");
+
   try{
     const url=new URL(window.location.href);
-    url.searchParams.delete("debug");
-    url.searchParams.delete("fresh");
-    url.searchParams.delete("v");
-    history.replaceState({},"",url.pathname+(url.searchParams.toString()?"?"+url.searchParams.toString():""));
-  }catch(e){}
+    let changed=false;
+    ["debug","fresh","v"].forEach(key=>{
+      if(url.searchParams.has(key)){
+        url.searchParams.delete(key);
+        changed=true;
+      }
+    });
+    if(changed){
+      window.history.replaceState(null,"",url.toString());
+    }
+  }catch(e){
+    console.log("forceProductionMode URL clean error:",e);
+  }
 }
 
-
+function setAutostartLocalModel(name){
+  forceProductionMode();
+  const localName=makeLocalModelName(name);
   try{
     localStorage.setItem(AUTOSTART_LOCAL_MODEL_KEY,localName);
     cleanAddressToRootForAutostart();
