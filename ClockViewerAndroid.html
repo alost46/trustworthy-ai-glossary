@@ -2258,35 +2258,7 @@ function replaceCurrentPageWithAutostart(){
   return ok;
 }
 
-function forceProductionMode(){
-  /* Жёстко выключаем DEBUG только для обычного production-запуска.
-     ВАЖНО: не трогаем параметры ?menu, ?model, ?local, чтобы не ломать главное меню и ручной выбор модели. */
-  try{
-    sessionStorage.removeItem("clock_debug_once");
-    sessionStorage.removeItem("clock_debug_cleaned");
-  }catch(e){}
-
-  document.body.classList.remove("debug-on");
-
-  try{
-    const url=new URL(window.location.href);
-    let changed=false;
-    ["debug","fresh","v"].forEach(key=>{
-      if(url.searchParams.has(key)){
-        url.searchParams.delete(key);
-        changed=true;
-      }
-    });
-    if(changed){
-      window.history.replaceState(null,"",url.toString());
-    }
-  }catch(e){
-    console.log("forceProductionMode URL clean error:",e);
-  }
-}
-
 function setAutostartLocalModel(name){
-  forceProductionMode();
   const localName=makeLocalModelName(name);
   try{
     localStorage.setItem(AUTOSTART_LOCAL_MODEL_KEY,localName);
@@ -2329,7 +2301,6 @@ function openMainModelMenu(){
 }
 
 function loadAutostartLocalModel(){
-  forceProductionMode();
   debugAutostart("loadAutostartLocalModel: before read");
   const name=getAutostartLocalModel();
   if(!name){
