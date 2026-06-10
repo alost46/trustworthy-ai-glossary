@@ -1523,7 +1523,8 @@ function restoreAllLocalDataFromObject(obj){
   const normalizedModels={};
 
   Object.keys(models).forEach(name=>{
-    const localName=makeLocalModelName(name);
+    forceProductionMode();
+  const localName=makeLocalModelName(name);
     normalizedModels[localName]=models[name];
   });
 
@@ -2258,8 +2259,23 @@ function replaceCurrentPageWithAutostart(){
   return ok;
 }
 
-function setAutostartLocalModel(name){
-  const localName=makeLocalModelName(name);
+
+function forceProductionMode(){
+  try{
+    sessionStorage.removeItem("clock_debug_once");
+    sessionStorage.removeItem("clock_debug_cleaned");
+  }catch(e){}
+  document.body.classList.remove("debug-on");
+  try{
+    const url=new URL(window.location.href);
+    url.searchParams.delete("debug");
+    url.searchParams.delete("fresh");
+    url.searchParams.delete("v");
+    history.replaceState({},"",url.pathname+(url.searchParams.toString()?"?"+url.searchParams.toString():""));
+  }catch(e){}
+}
+
+
   try{
     localStorage.setItem(AUTOSTART_LOCAL_MODEL_KEY,localName);
     cleanAddressToRootForAutostart();
@@ -2301,6 +2317,7 @@ function openMainModelMenu(){
 }
 
 function loadAutostartLocalModel(){
+  forceProductionMode();
   debugAutostart("loadAutostartLocalModel: before read");
   const name=getAutostartLocalModel();
   if(!name){
