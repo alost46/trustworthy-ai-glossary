@@ -526,6 +526,7 @@ function showInstallPromptPanel(message){
 }
 
 async function runInstallPromptFromButton(){
+  clearDebugState();
   const els=getInstallPromptElements();
   if(!deferredInstallPrompt){
     if(els.text){
@@ -659,54 +660,42 @@ const AUTOSTART_LOCAL_MODEL_KEY="clock_autostart_local_model";
 const DEBUG_AUTOSTART=false;
 
 
-let DEBUG_MODE_ACTIVE=false;
-
-function hasExplicitDebugLaunchRequest(){
+function isDebugRequested(){
+  /* DEBUG разрешён только для явного запуска кнопкой "Запустить с DEBUG":
+     1) кнопка ставит sessionStorage clock_debug_once=1
+     2) кнопка добавляет в адрес ?debug=1
+     При запуске Android/PWA-иконкой sessionStorage иногда может сохраниться,
+     поэтому одного sessionStorage недостаточно. */
   try{
-    const params=new URLSearchParams(location.search);
-    return params.get("debug")==="1" && sessionStorage.getItem("clock_debug_once")==="1";
+    const params=new URLSearchParams(window.location.search);
+    return sessionStorage.getItem("clock_debug_once")==="1" && params.get("debug")==="1";
   }catch(e){
     return false;
   }
 }
 
-function isDebugRequested(){
-  return DEBUG_MODE_ACTIVE;
-}
-
-function clearDebugLaunchState(cleanUrl=false){
+function clearDebugState(){
   try{
     sessionStorage.removeItem("clock_debug_once");
     sessionStorage.removeItem("clock_debug_cleaned");
   }catch(e){}
 
-  if(cleanUrl){
-    try{
-      const url=new URL(window.location.href);
-      url.searchParams.delete("debug");
-      url.searchParams.delete("fresh");
-      url.searchParams.delete("v");
-      history.replaceState(null,"",url.toString());
-    }catch(e){}
-  }
+  document.body.classList.remove("debug-on");
 
-  if(!DEBUG_MODE_ACTIVE){
-    document.body.classList.remove("debug-on");
+  try{
     const floating=document.getElementById("debugFloatingPanel");
     if(floating)floating.remove();
     const panel=document.getElementById("debugPanel");
     if(panel)panel.remove();
-  }
+  }catch(e){}
 }
 
-if(hasExplicitDebugLaunchRequest()){
-  DEBUG_MODE_ACTIVE=true;
+if(isDebugRequested()){
   try{ sessionStorage.removeItem("clock_debug_once"); }catch(e){}
   document.body.classList.add("debug-on");
   console.log("DEBUG mode requested");
 }else{
-  DEBUG_MODE_ACTIVE=false;
-  clearDebugLaunchState(true);
+  clearDebugState();
 }
 
 const VIEWER_URL="https://alost46.github.io/trustworthy-ai-glossary/ClockViewerAndroid.html";
@@ -723,7 +712,6 @@ function makeCleanProductionUrl(){
 }
 
 function cleanUrlBeforeInstall(){
-  clearDebugLaunchState(true);
   try{
     const clean = location.origin + location.pathname.replace(/[^/]*$/, "ClockViewerAndroid.html");
     history.replaceState({}, "", clean);
@@ -2253,7 +2241,7 @@ function debugAutostart(context){
 }
 
 function cleanAddressToRootForAutostart(){
-  clearDebugLaunchState(true);
+  clearDebugState();
   try{
     const url=new URL(window.location.href);
     url.search="";
@@ -2266,10 +2254,10 @@ function cleanAddressToRootForAutostart(){
 }
 
 function replaceCurrentPageWithAutostart(){
+  clearDebugState();
   /* После выбора стартовой модели НЕ открываем новую вкладку и не оставляем меню.
      Чистим URL, закрываем меню, запускаем выбранную модель в этой же странице.
      Если Chrome разрешил beforeinstallprompt, показываем кнопку создания иконки. */
-  clearDebugLaunchState(true);
   try{
     const url=new URL(window.location.href);
     url.search="";
@@ -2296,7 +2284,7 @@ function replaceCurrentPageWithAutostart(){
 }
 
 function setAutostartLocalModel(name){
-  clearDebugLaunchState(true);
+  clearDebugState();
   const localName=makeLocalModelName(name);
   try{
     localStorage.setItem(AUTOSTART_LOCAL_MODEL_KEY,localName);
@@ -2339,7 +2327,7 @@ function openMainModelMenu(){
 }
 
 function loadAutostartLocalModel(){
-  if(!DEBUG_MODE_ACTIVE)clearDebugLaunchState(true);
+  if(!isDebugRequested())clearDebugState();
   debugAutostart("loadAutostartLocalModel: before read");
   const name=getAutostartLocalModel();
   if(!name){
