@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Clock">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>Clock Viewer - SPLIT-MODE-CREATE-LINK-ICON</title>
+<title>Clock Viewer - SPLIT-MODE-CREATE-LINK-ICON-SAFE</title>
 <style>
 :root{--bg:#0f172a;--text:#1f2937;--muted:#64748b}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -121,7 +121,7 @@ small{display:block;color:var(--muted);margin-top:4px;line-height:1.35}
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="manifest" href="clock_manifest.json">
 <link rel="apple-touch-icon" href="clock_icon_192.png">
-<meta name="clock-engine-version" content="SPLIT-MODE-CREATE-LINK-ICON">
+<meta name="clock-engine-version" content="SPLIT-MODE-CREATE-LINK-ICON-SAFE">
 </head>
 <body>
 
@@ -379,7 +379,25 @@ small{display:block;color:var(--muted);margin-top:4px;line-height:1.35}
 </div>
 
 <script>
-// CLOCK_ENGINE_VERSION: SPLIT-MODE-CREATE-LINK-ICON
+
+function showClockEmergencyError(error){
+  try{
+    const box=document.createElement("div");
+    box.style.cssText="position:fixed;left:10px;right:10px;bottom:10px;z-index:999999;background:#fff;color:#111827;border:2px solid #dc2626;border-radius:12px;padding:10px;font:13px/1.35 Arial,sans-serif;white-space:pre-wrap;box-shadow:0 8px 28px rgba(0,0,0,.35)";
+    box.textContent="Ошибка запуска ClockViewer:\n"+(error && (error.stack || error.message) ? (error.stack || error.message) : String(error));
+    document.body.appendChild(box);
+  }catch(e){}
+}
+
+window.addEventListener("error",function(event){
+  showClockEmergencyError(event.error || event.message);
+});
+
+window.addEventListener("unhandledrejection",function(event){
+  showClockEmergencyError(event.reason || "Unhandled promise rejection");
+});
+
+// CLOCK_ENGINE_VERSION: SPLIT-MODE-CREATE-LINK-ICON-SAFE
 
 const canvas=document.getElementById("clock");
 const ctx=canvas.getContext("2d");
@@ -842,12 +860,21 @@ function applyByte(byteHex){
 }
 
 function updateHexPanel(){
-  if(!hexTable.children.length)return;
+  if(!hexTable || !hexTable.children || !hexTable.children.length)return;
 
-  const target=hexTarget.value;
-  const color=getColorVar(target);
-  hexCurrent.value=color;
-  hexPreview.style.background=color;
+  let target=hexTarget && hexTarget.value ? hexTarget.value : "screenBgColor";
+  let color=getColorVar(target);
+
+  if(!color){
+    target="screenBgColor";
+    color=screenBgColor || "#0f172a";
+    if(hexTarget)hexTarget.value=target;
+  }
+
+  color=normalizeHex(color);
+
+  if(hexCurrent)hexCurrent.value=color;
+  if(hexPreview)hexPreview.style.background=color;
 
   const byte=
     activeChannel==="R"?color.slice(1,3):
@@ -2538,7 +2565,11 @@ async function initClockApp(){
   draw();
 }
 
-initClockApp();
+initClockApp().catch(error=>{
+  console.log("Clock init error:",error);
+  showClockEmergencyError(error);
+  try{draw();}catch(e){console.log("Fallback draw error:",e);}
+});
 </script>
 </body>
 </html>
