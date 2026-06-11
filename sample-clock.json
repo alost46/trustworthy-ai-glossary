@@ -1,0 +1,31 @@
+{
+  "schema": "ClockViewerModel/v1",
+  "id": "sample-clock",
+  "name": "Sample Clock",
+  "exportedAt": "2026-06-11T07:33:33.352986",
+  "settings": {
+    "screenBgColor": "#0f172a",
+    "faceColor": "#111111",
+    "accentColor": "#00ffcc",
+    "hourHandColor": "#00ffcc",
+    "minuteHandColor": "#00ffcc",
+    "secondHandColor": "#ff0000",
+    "symbolColor": "#ffffff",
+    "symbolGray": 100,
+    "reverse": false,
+    "showSecondHand": true,
+    "showDigitalClock": true,
+    "showDigital24": true,
+    "clockSizeValue": 100,
+    "dialAspect": 1.0,
+    "autoDialAspect": true,
+    "font": "Arial",
+    "symbolSize": 40,
+    "svgSymbolScalePercent": 100,
+    "svgSymbolScale": 100,
+    "radiusPercent": 70,
+    "symbolRenderMode": "text",
+    "customSvgDataUris": [],
+    "symbolsText": "1 2 3 4 5 6 7 8 9 10 11 12"
+  }
+}

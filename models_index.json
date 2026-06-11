@@ -1,0 +1,9 @@
+{
+  "models": [
+    {
+      "id": "sample-clock",
+      "title": "Sample Clock",
+      "description": "Пробная GitHub-модель для проверки split-mode: открыть, сохранить локально, сделать стартовой."
+    }
+  ]
+}
