@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Clock">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>Clock Viewer - start model menu</title>
+<title>Clock Viewer - SPLIT-MODE-INSTALL-PROMPT</title>
 <style>
 :root{--bg:#0f172a;--text:#1f2937;--muted:#64748b}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -94,6 +94,17 @@ small{display:block;color:var(--muted);margin-top:4px;line-height:1.35}
 #exitBtn.two-button-left{left:calc(50% - 39px);transform:translateX(-50%)}
 #fullscreenBtn.two-button-right{left:calc(50% + 39px);transform:translateX(-50%)}
 
+
+.install-prompt-panel{display:none;position:fixed;left:50%;bottom:18px;transform:translateX(-50%);z-index:80;width:min(460px,calc(100vw - 28px));background:rgba(255,255,255,.96);color:#0f172a;border:1px solid #cbd5e1;border-radius:16px;padding:12px;box-shadow:0 12px 36px rgba(0,0,0,.32)}
+.install-prompt-panel.active{display:block}
+.install-prompt-title{font-weight:bold;margin-bottom:4px}
+.install-prompt-text{font-size:13px;line-height:1.35;color:#475569;margin-bottom:10px}
+.install-prompt-actions{display:grid;grid-template-columns:1fr auto;gap:8px}
+.install-prompt-actions button{border:none;border-radius:10px;padding:9px 10px;font-weight:bold;cursor:pointer}
+#installPromptButton{background:#059669;color:#fff}
+#installPromptButton:disabled{background:#94a3b8;color:#e2e8f0;cursor:not-allowed}
+#installPromptClose{background:#e2e8f0;color:#0f172a}
+
 #exitHint{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.72);color:#fff;padding:10px 16px;border-radius:12px;font-size:14px;line-height:1.35;opacity:0;pointer-events:none;transition:opacity .3s;z-index:40;box-shadow:0 6px 18px rgba(0,0,0,.28);max-width:calc(100vw - 32px);text-align:center}
 @media(max-width:520px){
   .color-grid,.hex-controls,.time-grid,.model-grid{grid-template-columns:1fr}
@@ -110,6 +121,7 @@ small{display:block;color:var(--muted);margin-top:4px;line-height:1.35}
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="manifest" href="clock_manifest.json">
 <link rel="apple-touch-icon" href="clock_icon_192.png">
+<meta name="clock-engine-version" content="SPLIT-MODE-INSTALL-PROMPT">
 </head>
 <body>
 
@@ -123,6 +135,16 @@ small{display:block;color:var(--muted);margin-top:4px;line-height:1.35}
 <button id="exitBtn" type="button" aria-label="Выход">✕</button>
 <button id="fullscreenBtn" type="button" aria-label="Полный экран">⛶</button>
 <div id="exitHint" role="status" aria-live="polite"></div>
+
+<div id="installPromptPanel" class="install-prompt-panel" aria-live="polite">
+  <div class="install-prompt-title">Стартовая модель сохранена</div>
+  <div class="install-prompt-text" id="installPromptText">Можно создать иконку часов на главном экране.</div>
+  <div class="install-prompt-actions">
+    <button type="button" id="installPromptButton">Создать иконку часов</button>
+    <button type="button" id="installPromptClose">Скрыть</button>
+  </div>
+</div>
+
 
 <div class="model-picker" id="modelPicker" role="dialog" aria-modal="true" aria-labelledby="modelPickerTitle">
   <div class="model-picker-card">
@@ -357,7 +379,8 @@ small{display:block;color:var(--muted);margin-top:4px;line-height:1.35}
 </div>
 
 <script>
-alert("CLOCK TEST V24");
+// CLOCK_ENGINE_VERSION: SPLIT-MODE-INSTALL-PROMPT
+
 const canvas=document.getElementById("clock");
 const ctx=canvas.getContext("2d");
 const panel=document.getElementById("settingsPanel");
@@ -457,6 +480,94 @@ function arrangeTopButtons(){
 }
 
 arrangeTopButtons();
+
+let deferredInstallPrompt=null;
+
+window.addEventListener("beforeinstallprompt",event=>{
+  event.preventDefault();
+  deferredInstallPrompt=event;
+  console.log("beforeinstallprompt captured");
+});
+
+window.addEventListener("appinstalled",()=>{
+  deferredInstallPrompt=null;
+  hideInstallPromptPanel();
+  console.log("Clock PWA installed");
+});
+
+function getInstallPromptElements(){
+  return {
+    panel:document.getElementById("installPromptPanel"),
+    text:document.getElementById("installPromptText"),
+    button:document.getElementById("installPromptButton"),
+    close:document.getElementById("installPromptClose")
+  };
+}
+
+function hideInstallPromptPanel(){
+  const els=getInstallPromptElements();
+  if(els.panel)els.panel.classList.remove("active");
+}
+
+function showInstallPromptPanel(modelName){
+  const els=getInstallPromptElements();
+  if(!els.panel)return;
+
+  els.panel.classList.add("active");
+
+  if(els.text){
+    const name=modelName ? "«"+modelName+"»" : "выбранной модели";
+    if(deferredInstallPrompt){
+      els.text.textContent="Стартовая модель "+name+" сохранена. Можно создать иконку часов.";
+    }else{
+      els.text.textContent="Стартовая модель "+name+" сохранена. Если системная кнопка установки недоступна, используйте меню браузера ⋮ → Добавить на главный экран / Установить приложение.";
+    }
+  }
+
+  if(els.button){
+    els.button.disabled=!deferredInstallPrompt;
+    els.button.textContent=deferredInstallPrompt ? "Создать иконку часов" : "Через меню браузера ⋮";
+  }
+}
+
+async function runInstallPromptFromButton(){
+  const els=getInstallPromptElements();
+
+  if(!deferredInstallPrompt){
+    if(els.text){
+      els.text.textContent="Браузер сейчас не выдал системный диалог установки. Используйте меню ⋮ → Добавить на главный экран / Установить приложение.";
+    }
+    if(els.button)els.button.disabled=true;
+    return;
+  }
+
+  const promptEvent=deferredInstallPrompt;
+  deferredInstallPrompt=null;
+
+  try{
+    promptEvent.prompt();
+    const choice=await promptEvent.userChoice;
+    if(els.text){
+      els.text.textContent="Результат установки: "+(choice && choice.outcome ? choice.outcome : "unknown");
+    }
+  }catch(e){
+    console.log("Install prompt error:",e);
+    if(els.text)els.text.textContent="Не удалось открыть системный диалог установки. Используйте меню браузера ⋮.";
+  }
+
+  if(els.button)els.button.disabled=true;
+}
+
+function initInstallPromptPanel(){
+  const els=getInstallPromptElements();
+  if(els.button)els.button.onclick=runInstallPromptFromButton;
+  if(els.close)els.close.onclick=hideInstallPromptPanel;
+}
+
+function showStartModelInstallOffer(modelName){
+  showInstallPromptPanel(modelName || getAutostartLocalModel());
+}
+
 
 /* Production/PWA mode: service worker stays registered.
    Android installation uses manifest + service worker + start_url. */
@@ -1978,7 +2089,7 @@ function loadLocalModelFromQuery(){
 
 function makeLocalModelLaunchLink(name){
   const modelName=makeLocalModelName(String(name||modelNameInput.value||"").trim());
-  return location.origin+location.pathname+"?local="+encodeURIComponent(modelName);
+  return location.origin+location.pathname+"?mode=local&local="+encodeURIComponent(modelName);
 }
 
 function setAutostartLocalModel(name){
@@ -1988,6 +2099,8 @@ function setAutostartLocalModel(name){
   }catch(e){
     console.log("Не удалось сохранить стартовую модель:",e);
   }
+
+  showStartModelInstallOffer(localName);
 }
 
 function getAutostartLocalModel(){
@@ -2004,15 +2117,33 @@ function clearAutostartLocalModel(){
   }catch(e){}
 }
 
+
+function getClockRunMode(){
+  const params=new URLSearchParams(location.search);
+  const mode=(params.get("mode") || "").toLowerCase();
+  if(mode==="local" || mode==="menu")return mode;
+  if(params.has("local"))return "local";
+  if(params.has("menu") || params.get("screen")==="menu")return "menu";
+  return "";
+}
+
+function isLocalRunMode(){
+  return getClockRunMode()==="local";
+}
+
+function isMenuRunMode(){
+  return getClockRunMode()==="menu";
+}
+
 function shouldForceMainMenu(){
   const params=new URLSearchParams(location.search);
-  return params.has("menu") || params.get("screen")==="menu";
+  return isMenuRunMode() || params.has("menu") || params.get("screen")==="menu";
 }
 
 function openMainModelMenu(){
   try{
     const url=new URL(window.location.href);
-    url.search="?menu=1";
+    url.search="?mode=menu&menu=1";
     url.hash="";
     window.history.replaceState(null,"",url.toString());
   }catch(e){}
@@ -2245,7 +2376,7 @@ function setAddressToLocalModel(name){
   const localName=makeLocalModelName(name);
   try{
     const url=new URL(window.location.href);
-    url.search="?local="+encodeURIComponent(localName);
+    url.search="?mode=local&local="+encodeURIComponent(localName);
     url.hash="";
     window.history.replaceState(null,"",url.toString());
   }catch(e){
@@ -2362,6 +2493,7 @@ function installLocalModelButtonHandlers(){
 }
 
 async function initClockApp(){
+  initInstallPromptPanel();
   installLocalModelButtonHandlers();
   buildHexTable();
   updatePreview();
@@ -2371,7 +2503,15 @@ async function initClockApp(){
 
   const loadedFromHash=loadSettingsFromURL();
   if(!loadedFromHash){
-    if(shouldShowLocalPanel()){
+    if(isLocalRunMode()){
+      const loadedFromLocal=loadLocalModelFromQuery();
+      if(!loadedFromLocal){
+        const loadedFromAutostart=loadAutostartLocalModel();
+        if(!loadedFromAutostart){
+          showLocalModelsPanel();
+        }
+      }
+    }else if(shouldShowLocalPanel()){
       showLocalModelsPanel();
     }else if(shouldForceMainMenu()){
       await showModelPickerFromIndex();
