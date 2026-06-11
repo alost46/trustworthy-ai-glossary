@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Clock">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>Clock Viewer - SPLIT-MODE-SNAPSHOT-LOCAL-29</title>
+<title>Clock Viewer - SPLIT-MODE-BLACKSCREEN-RECOVERY-31</title>
 <style>
 :root{--bg:#0f172a;--text:#1f2937;--muted:#64748b}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -121,7 +121,7 @@ small{display:block;color:var(--muted);margin-top:4px;line-height:1.35}
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="manifest" href="clock_manifest.json">
 <link rel="apple-touch-icon" href="clock_icon_192.png">
-<meta name="clock-engine-version" content="SPLIT-MODE-SNAPSHOT-LOCAL-29">
+<meta name="clock-engine-version" content="SPLIT-MODE-BLACKSCREEN-RECOVERY-31">
 </head>
 <body>
 
@@ -397,7 +397,7 @@ window.addEventListener("unhandledrejection",function(event){
   showClockEmergencyError(event.reason || "Unhandled promise rejection");
 });
 
-// CLOCK_ENGINE_VERSION: SPLIT-MODE-SNAPSHOT-LOCAL-29
+// CLOCK_ENGINE_VERSION: SPLIT-MODE-BLACKSCREEN-RECOVERY-31
 
 const canvas=document.getElementById("clock");
 const ctx=canvas.getContext("2d");
@@ -1429,12 +1429,19 @@ function normalizeSnapshotAlias(value){
 }
 
 function getModelAliasList(){
+  let autostartName="";
+  try{
+    autostartName=getAutostartLocalModel();
+  }catch(e){
+    autostartName="";
+  }
+
   const aliases=[
     currentGitHubModelId,
     modelNameInput && modelNameInput.value,
     modelNameInput && modelNameInput.value ? String(modelNameInput.value).replace(/L$/i,"") : "",
-    getAutostartLocalModel && getAutostartLocalModel(),
-    getAutostartLocalModel && getAutostartLocalModel() ? String(getAutostartLocalModel()).replace(/L$/i,"") : ""
+    autostartName,
+    autostartName ? String(autostartName).replace(/L$/i,"") : ""
   ];
 
   return [...new Set(aliases.map(normalizeSnapshotAlias).filter(Boolean))];
@@ -2132,9 +2139,10 @@ async function loadModelFromGitHubById(modelId,sourceLabel,makeAutostart=false){
     // Важно: если локальная версия уже существует, не перезаписываем её GitHub-вариантом.
     // Это защищает подогнанную пользователем локальную модель.
     let localName=restoreLocalSnapshotForModel(normalizedId,displayName);
+    let existingLocalName="";
 
     if(!localName){
-      const existingLocalName=findExistingLocalModelForGitHub(normalizedId,displayName);
+      existingLocalName=findExistingLocalModelForGitHub(normalizedId,displayName);
       localName=existingLocalName;
     }
 
@@ -2232,7 +2240,12 @@ function loadLocalModelByName(name,makeAutostart=false){
 
 function loadLocalModelFromQuery(){
   const params=new URLSearchParams(location.search);
-  const localParam=params.get("local");
+  let localParam=params.get("local");
+
+  if(!localParam && isLocalRunMode()){
+    localParam=getAutostartLocalModel();
+  }
+
   if(!localParam)return false;
   return loadLocalModelByName(localParam);
 }
@@ -2437,7 +2450,7 @@ function findExistingLocalModelForGitHub(modelId,title){
   return "";
 }
 
-async async function startPreferredModelFromPicker(modelId,title){
+async function startPreferredModelFromPicker(modelId,title){
   const restoredLocalName=restoreLocalSnapshotForModel(modelId,title);
 
   if(restoredLocalName){
@@ -2720,25 +2733,40 @@ async function initClockApp(){
   renderModelList();
 
   const loadedFromHash=loadSettingsFromURL();
+
   if(!loadedFromHash){
     if(isLocalRunMode()){
       const loadedFromLocal=loadLocalModelFromQuery();
+
       if(!loadedFromLocal){
         const loadedFromAutostart=loadAutostartLocalModel();
+
         if(!loadedFromAutostart){
-          showLocalModelsPanel();
+          const shownLocalPanel=showLocalModelsPanel();
+
+          // Аварийный выход из чёрного экрана:
+          // если локальный режим ничего не нашёл, показываем главное меню GitHub-моделей.
+          if(!shownLocalPanel){
+            await showModelPickerFromIndex();
+          }
         }
       }
     }else if(shouldShowLocalPanel()){
-      showLocalModelsPanel();
+      const shownLocalPanel=showLocalModelsPanel();
+      if(!shownLocalPanel){
+        await showModelPickerFromIndex();
+      }
     }else if(shouldForceMainMenu()){
       await showModelPickerFromIndex();
     }else{
       const loadedFromLocal=loadLocalModelFromQuery();
+
       if(!loadedFromLocal){
         const loadedFromQuery=await loadModelFromGitHubQuery();
+
         if(!loadedFromQuery){
           const loadedFromAutostart=loadAutostartLocalModel();
+
           if(!loadedFromAutostart){
             await showModelPickerFromIndex();
           }
