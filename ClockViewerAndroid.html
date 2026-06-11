@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Clock">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>Clock Viewer - SPLIT-MODE-SWITCH-STARTMODEL</title>
+<title>Clock Viewer - SPLIT-MODE-SWITCH-STARTMODEL-SAFE</title>
 <style>
 :root{--bg:#0f172a;--text:#1f2937;--muted:#64748b}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -121,7 +121,7 @@ small{display:block;color:var(--muted);margin-top:4px;line-height:1.35}
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="manifest" href="clock_manifest.json">
 <link rel="apple-touch-icon" href="clock_icon_192.png">
-<meta name="clock-engine-version" content="SPLIT-MODE-SWITCH-STARTMODEL">
+<meta name="clock-engine-version" content="SPLIT-MODE-SWITCH-STARTMODEL-SAFE">
 </head>
 <body>
 
@@ -397,7 +397,7 @@ window.addEventListener("unhandledrejection",function(event){
   showClockEmergencyError(event.reason || "Unhandled promise rejection");
 });
 
-// CLOCK_ENGINE_VERSION: SPLIT-MODE-SWITCH-STARTMODEL
+// CLOCK_ENGINE_VERSION: SPLIT-MODE-SWITCH-STARTMODEL-SAFE
 
 const canvas=document.getElementById("clock");
 const ctx=canvas.getContext("2d");
@@ -576,38 +576,6 @@ async function runInstallPromptFromButton(){
   if(els.button)els.button.disabled=true;
 }
 
-
-function installMakeStartButtonAutostartSync(){
-  document.addEventListener("click",function(event){
-    const btn=event.target && event.target.closest ? event.target.closest("button") : null;
-    if(!btn)return;
-
-    const label=(btn.textContent || "").trim().toLowerCase();
-    if(label.indexOf("сделать стартовой")<0)return;
-
-    setTimeout(function(){
-      let name="";
-      try{
-        const card=btn.closest(".model-choice,.model-row,.model-picker-card,.constructor-section");
-        if(card){
-          const title=card.querySelector(".model-name,b,strong,h3");
-          if(title)name=(title.textContent || "").trim();
-        }
-      }catch(e){}
-
-      if(!name){
-        name=(modelNameInput && modelNameInput.value) || currentGitHubModelId || "local-clock-model";
-      }
-
-      const localName=saveCurrentSettingsAsAutostartLocalModel(name,collectCurrentSettings());
-      showModelStatus("✅ Стартовая модель переключена: "+localName,null);
-
-      if(typeof showStartModelInstallOffer==="function"){
-        showStartModelInstallOffer(localName);
-      }
-    },180);
-  },true);
-}
 
 function initInstallPromptPanel(){
   const els=getInstallPromptElements();
@@ -2153,8 +2121,7 @@ function loadLocalModelFromQuery(){
 }
 
 function makeLocalModelLaunchLink(name){
-  const modelName=makeLocalModelName(String(name||modelNameInput.value||"").trim());
-  return location.origin+location.pathname+"?mode=local&local="+encodeURIComponent(modelName);
+  return location.origin+location.pathname+"?mode=local";
 }
 
 function setAutostartLocalModel(name){
@@ -2559,7 +2526,6 @@ function installLocalModelButtonHandlers(){
 
 async function initClockApp(){
   initInstallPromptPanel();
-  installMakeStartButtonAutostartSync();
   installLocalModelButtonHandlers();
   buildHexTable();
   updatePreview();
