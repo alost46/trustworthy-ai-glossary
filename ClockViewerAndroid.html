@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Clock">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>Clock Viewer - SPLIT-MODE-SWITCH-STARTMODEL-SAFE</title>
+<title>Clock Viewer - SPLIT-MODE-PREFER-LOCAL-START</title>
 <style>
 :root{--bg:#0f172a;--text:#1f2937;--muted:#64748b}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -121,7 +121,7 @@ small{display:block;color:var(--muted);margin-top:4px;line-height:1.35}
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="manifest" href="clock_manifest.json">
 <link rel="apple-touch-icon" href="clock_icon_192.png">
-<meta name="clock-engine-version" content="SPLIT-MODE-SWITCH-STARTMODEL-SAFE">
+<meta name="clock-engine-version" content="SPLIT-MODE-PREFER-LOCAL-START">
 </head>
 <body>
 
@@ -397,7 +397,7 @@ window.addEventListener("unhandledrejection",function(event){
   showClockEmergencyError(event.reason || "Unhandled promise rejection");
 });
 
-// CLOCK_ENGINE_VERSION: SPLIT-MODE-SWITCH-STARTMODEL-SAFE
+// CLOCK_ENGINE_VERSION: SPLIT-MODE-PREFER-LOCAL-START
 
 const canvas=document.getElementById("clock");
 const ctx=canvas.getContext("2d");
@@ -2115,24 +2115,55 @@ function loadLocalModelByName(name,makeAutostart=false){
 
 function loadLocalModelFromQuery(){
   const params=new URLSearchParams(location.search);
-  const localParam=params.get("local");
-  if(!localParam)return false;
-  return loadLocalModelByName(localParam);
+  let name=params.get("local");
+
+  // В режиме ?mode=local старая иконка не должна вести в главное меню.
+  // Если конкретное имя модели не передано, берём текущую стартовую модель из localStorage.
+  if(!name && isLocalRunMode()){
+    name=getAutostartLocalModel();
+  }
+
+  if(!name)return false;
+
+  const localName=makeLocalModelName(name);
+  const models=loadModels();
+  if(!models[localName]){
+    return false;
+  }
+
+  applySettings(models[localName]);
+  modelNameInput.value=localName;
+  currentGitHubModelId="";
+  return true;
 }
 
 function makeLocalModelLaunchLink(name){
   return location.origin+location.pathname+"?mode=local";
 }
 
-function setAutostartLocalModel(name){
+
+function resolvePreferredStartLocalModelName(name){
   const localName=makeLocalModelName(name);
+  const models=loadModels();
+
+  if(models && models[localName]){
+    return localName;
+  }
+
+  return localName;
+}
+
+function setAutostartLocalModel(name){
+  const localName=resolvePreferredStartLocalModelName(name);
   try{
     localStorage.setItem(AUTOSTART_LOCAL_MODEL_KEY,localName);
   }catch(e){
     console.log("Не удалось сохранить стартовую модель:",e);
   }
 
-  showStartModelInstallOffer(localName);
+  if(typeof showStartModelInstallOffer==="function"){
+    showStartModelInstallOffer(localName);
+  }
 }
 
 function getAutostartLocalModel(){
