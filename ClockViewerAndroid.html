@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Clock">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>Clock Viewer - SPLIT-MODE-INSTALL-PROMPT</title>
+<title>Clock Viewer - SPLIT-MODE-CONSTRUCTOR-ICON</title>
 <style>
 :root{--bg:#0f172a;--text:#1f2937;--muted:#64748b}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -121,7 +121,7 @@ small{display:block;color:var(--muted);margin-top:4px;line-height:1.35}
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="manifest" href="clock_manifest.json">
 <link rel="apple-touch-icon" href="clock_icon_192.png">
-<meta name="clock-engine-version" content="SPLIT-MODE-INSTALL-PROMPT">
+<meta name="clock-engine-version" content="SPLIT-MODE-CONSTRUCTOR-ICON">
 </head>
 <body>
 
@@ -183,6 +183,7 @@ small{display:block;color:var(--muted);margin-top:4px;line-height:1.35}
         <p class="section-note">Работа с текущими часами: сохранить на этом устройстве, экспортировать или импортировать одну JSON-модель.</p>
         <div class="button-stack">
           <button type="button" class="done-btn" id="saveModel">Сохранить локальную модель</button>
+          <button type="button" class="done-btn secondary-btn" id="makeIconFromConstructor" style="background:#059669;">Сделать кнопку / иконку</button>
           <button type="button" class="done-btn secondary-btn" id="exportLocalModel" style="background:#16a34a;">Export LOCAL MODEL JSON</button>
           <button type="button" class="done-btn secondary-btn" id="importLocalModelButton" style="background:#0891b2;">Import LOCAL MODEL JSON</button>
           <input type="file" id="importLocalModelFile" accept=".json,application/json" style="display:none">
@@ -379,7 +380,7 @@ small{display:block;color:var(--muted);margin-top:4px;line-height:1.35}
 </div>
 
 <script>
-// CLOCK_ENGINE_VERSION: SPLIT-MODE-INSTALL-PROMPT
+// CLOCK_ENGINE_VERSION: SPLIT-MODE-CONSTRUCTOR-ICON
 
 const canvas=document.getElementById("clock");
 const ctx=canvas.getContext("2d");
@@ -1562,6 +1563,42 @@ function importLocalModelObject(obj){
 document.getElementById("saveModel").onclick=()=>{
   saveLocalModelByName(modelNameInput.value,collectCurrentSettings());
 };
+
+const makeIconFromConstructorButton=document.getElementById("makeIconFromConstructor");
+if(makeIconFromConstructorButton){
+  makeIconFromConstructorButton.onclick=()=>{
+    let rawName=(modelNameInput.value || currentGitHubModelId || "local-clock-model").trim();
+
+    if(!rawName){
+      rawName="local-clock-model";
+    }
+
+    const localName=makeLocalModelName(rawName);
+    const settings=collectCurrentSettings();
+    const models=loadModels();
+
+    models[localName]=settings;
+    saveModels(models);
+
+    modelNameInput.value=localName;
+    currentGitHubModelId="";
+
+    try{
+      localStorage.setItem(AUTOSTART_LOCAL_MODEL_KEY,localName);
+    }catch(e){
+      console.log("Не удалось сохранить стартовую модель:",e);
+    }
+
+    renderModelList();
+    showModelStatus("✅ Текущая настройка сохранена как стартовая модель: "+localName,"makeIconFromConstructor");
+
+    if(typeof showStartModelInstallOffer==="function"){
+      showStartModelInstallOffer(localName);
+    }else if(typeof showInstallPromptPanel==="function"){
+      showInstallPromptPanel(localName);
+    }
+  };
+}
 
 document.getElementById("createLocalLink").onclick=()=>{
   const rawName=(modelNameInput.value || currentGitHubModelId || "").trim();
