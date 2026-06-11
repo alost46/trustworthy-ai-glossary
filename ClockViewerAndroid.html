@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Clock">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>Clock Viewer - SPLIT-MODE-SAFE-PREFER-LOCAL</title>
+<title>Clock Viewer - SPLIT-MODE-PRESERVE-LOCAL-28</title>
 <style>
 :root{--bg:#0f172a;--text:#1f2937;--muted:#64748b}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -121,7 +121,7 @@ small{display:block;color:var(--muted);margin-top:4px;line-height:1.35}
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="manifest" href="clock_manifest.json">
 <link rel="apple-touch-icon" href="clock_icon_192.png">
-<meta name="clock-engine-version" content="SPLIT-MODE-SAFE-PREFER-LOCAL">
+<meta name="clock-engine-version" content="SPLIT-MODE-PRESERVE-LOCAL-28">
 </head>
 <body>
 
@@ -397,7 +397,7 @@ window.addEventListener("unhandledrejection",function(event){
   showClockEmergencyError(event.reason || "Unhandled promise rejection");
 });
 
-// CLOCK_ENGINE_VERSION: SPLIT-MODE-SAFE-PREFER-LOCAL
+// CLOCK_ENGINE_VERSION: SPLIT-MODE-PRESERVE-LOCAL-28
 
 const canvas=document.getElementById("clock");
 const ctx=canvas.getContext("2d");
@@ -2025,15 +2025,25 @@ async function loadModelFromGitHubById(modelId,sourceLabel,makeAutostart=false){
 
     modelNameInput.value=data.name || data.title || data.id || normalizedId;
     const displayName=data.name || data.title || normalizedId;
-    const localName=saveCurrentSettingsAsLocalModel(displayName);
+
+    // Важно: если локальная версия уже существует, не перезаписываем её GitHub-вариантом.
+    // Это защищает подогнанную пользователем локальную модель.
+    const existingLocalName=findExistingLocalModelForGitHub(normalizedId,displayName);
+    let localName=existingLocalName;
+
+    if(!localName){
+      localName=saveCurrentSettingsAsLocalModel(displayName);
+    }
 
     if(makeAutostart){
       setAutostartLocalModel(localName);
     }
 
-    modelStatus.textContent=localOverride
-      ? "Модель загружена из GitHub, применена локальная настройка устройства и сохранена как локальная: "+localName
-      : "Модель загружена из GitHub и сохранена как локальная: "+localName;
+    modelStatus.textContent=existingLocalName
+      ? "Модель загружена из GitHub. Существующая локальная версия сохранена без перезаписи: "+localName
+      : (localOverride
+        ? "Модель загружена из GitHub, применена локальная настройка устройства и сохранена как локальная: "+localName
+        : "Модель загружена из GitHub и сохранена как локальная: "+localName);
 
     try{
       localStorage.setItem("clock_last_github_model",normalizedId);
@@ -2297,6 +2307,42 @@ function shouldShowLocalPanel(){
   return params.has("localpanel") || params.get("panel")==="local";
 }
 
+
+function findExistingLocalModelForGitHub(modelId,title){
+  const models=loadModels();
+  const names=Object.keys(models || {});
+
+  const candidates=[
+    makeLocalModelName(modelId),
+    makeLocalModelName(title),
+    makeLocalModelName(normalizeModelId(modelId)),
+    makeLocalModelName(normalizeModelId(title))
+  ].filter(Boolean);
+
+  for(const candidate of candidates){
+    const exact=names.find(n=>n===candidate);
+    if(exact)return exact;
+
+    const lower=names.find(n=>n.toLowerCase()===String(candidate).toLowerCase());
+    if(lower)return lower;
+  }
+
+  return "";
+}
+
+async function startPreferredModelFromPicker(modelId,title){
+  const localName=findExistingLocalModelForGitHub(modelId,title);
+
+  if(localName){
+    if(modelPickerStatus){
+      modelPickerStatus.textContent="Найдена локальная версия. Делаю стартовой: "+localName;
+    }
+    return loadLocalModelByName(localName,true);
+  }
+
+  return await loadModelFromGitHubById(modelId,"picker",true);
+}
+
 async function showModelPickerFromIndex(){
   if(!modelPicker || !modelPickerList || !modelPickerStatus)return false;
 
@@ -2349,7 +2395,7 @@ async function showModelPickerFromIndex(){
           await loadModelFromGitHubById(item.id,"picker",false);
         },
         async ()=>{
-          await loadModelFromGitHubById(item.id,"picker",true);
+          await startPreferredModelFromPicker(item.id,item.title);
         }
       ));
     });
