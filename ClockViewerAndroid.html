@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Clock">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>Clock Viewer - 20260612-BUILD-38-OPEN-FIX</title>
+<title>Clock Viewer - SAFE-BASE-01</title>
 <style>
 :root{--bg:#0f172a;--text:#1f2937;--muted:#64748b}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -58,7 +58,6 @@ small{display:block;color:var(--muted);margin-top:4px;line-height:1.35}
 .hex-cell.active{background:#111827;color:#fff}
 .hex-preview{height:36px;border-radius:8px;border:1px solid #cbd5e1;margin-top:10px}
 .model-list{display:flex;flex-direction:column;gap:8px;margin-top:10px}
-.model-list.collapsed{display:none}
 .model-row{display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:center;background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:8px}
 .model-name{font-weight:bold;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .model-row button{padding:7px 10px;border:none;border-radius:8px;color:#fff;cursor:pointer;font-weight:bold}
@@ -111,14 +110,14 @@ small{display:block;color:var(--muted);margin-top:4px;line-height:1.35}
 #installPromptClose{background:#e2e8f0;color:#0f172a}
 
 #exitHint{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.72);color:#fff;padding:10px 16px;border-radius:12px;font-size:14px;line-height:1.35;opacity:0;pointer-events:none;transition:opacity .3s;z-index:40;box-shadow:0 6px 18px rgba(0,0,0,.28);max-width:calc(100vw - 32px);text-align:center}
-
-.build-marker{position:fixed;right:6px;bottom:6px;z-index:99999;background:rgba(255,255,255,.88);color:#0f172a;border:1px solid #cbd5e1;border-radius:8px;padding:4px 6px;font:11px/1.2 Arial,sans-serif;pointer-events:none;box-shadow:0 4px 12px rgba(0,0,0,.18)}
 @media(max-width:520px){
   .color-grid,.hex-controls,.time-grid,.model-grid{grid-template-columns:1fr}
   .hex-cell{font-size:9px;padding:4px 0}
   .model-row{grid-template-columns:1fr}
   .svg-preview-grid{grid-template-columns:repeat(4,1fr)}
 }
+
+.build-badge{position:fixed;right:8px;bottom:8px;z-index:999998;background:rgba(255,255,255,.88);color:#0f172a;border:1px solid #cbd5e1;border-radius:8px;padding:4px 7px;font:11px/1.25 Arial,sans-serif;box-shadow:0 4px 14px rgba(0,0,0,.25);pointer-events:none}
 </style>
 
 <meta name="theme-color" content="#0f172a">
@@ -126,11 +125,13 @@ small{display:block;color:var(--muted);margin-top:4px;line-height:1.35}
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Clock Viewer">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<link rel="manifest" href="clock_manifest.json?v=20260612-BUILD-38-OPEN-FIX">
-<link rel="apple-touch-icon" href="clock_icon_192.png?v=20260612-BUILD-38-OPEN-FIX">
-<meta name="clock-engine-version" content="20260612-BUILD-38-OPEN-FIX">
+<link rel="manifest" href="clock_manifest.json?v=SAFE-BASE-01">
+<link rel="apple-touch-icon" href="clock_icon_192.png?v=SAFE-BASE-01">
+<meta name="clock-engine-version" content="SAFE-BASE-01">
 </head>
 <body>
+<div id="clockBuildBadge" class="build-badge">BUILD SAFE-BASE-01</div>
+
 
 <div class="clock-screen">
   <div class="clock-wrap" id="clockWrap">
@@ -142,7 +143,6 @@ small{display:block;color:var(--muted);margin-top:4px;line-height:1.35}
 <button id="exitBtn" type="button" aria-label="Выход">✕</button>
 <button id="fullscreenBtn" type="button" aria-label="Полный экран">⛶</button>
 <div id="exitHint" role="status" aria-live="polite"></div>
-<div id="buildMarker" class="build-marker">BUILD 38<br>20260612-BUILD-38-OPEN-FIX</div>
 
 <div id="installPromptPanel" class="install-prompt-panel" aria-live="polite">
   <div class="install-prompt-title">Стартовая модель сохранена</div>
@@ -200,7 +200,7 @@ small{display:block;color:var(--muted);margin-top:4px;line-height:1.35}
 
       <div class="constructor-section">
         <h3>Резервное копирование</h3>
-        <p class="section-note">Сохранение и восстановление всех локальных моделей одним внешним JSON-файлом.</p>
+        <p class="section-note">Сохранение и восстановление всех локальных моделей и настроек устройства одним внешним JSON-файлом.</p>
         <div class="button-stack">
           <button type="button" class="done-btn secondary-btn" id="backupAllLocalData" style="background:#0f766e;">Backup ALL LOCAL DATA</button>
           <button type="button" class="done-btn secondary-btn" id="restoreAllLocalDataButton" style="background:#9333ea;">Restore ALL LOCAL DATA</button>
@@ -217,13 +217,20 @@ small{display:block;color:var(--muted);margin-top:4px;line-height:1.35}
           <button type="button" class="done-btn secondary-btn" id="exportModelJson" style="background:#7c3aed;">Export MODEL JSON</button>
         </div>
       </div>
+
+      <div class="constructor-section">
+        <h3>Настройка этого устройства</h3>
+        <p class="section-note">Локальная подстройка размера часов, символов и радиуса только для данного телефона/ПК.</p>
+        <div class="button-stack">
+          <button type="button" class="done-btn secondary-btn" id="saveDeviceOverride" style="background:#0ea5e9;">Сохранить настройку этого устройства</button>
+          <button type="button" class="done-btn secondary-btn" id="clearDeviceOverride" style="background:#b45309;">Сбросить настройку устройства</button>
+        </div>
+      </div>
+
       <div class="constructor-section">
         <h3>Локальные модели</h3>
-        <p class="section-note">Модели, сохранённые в браузере этого устройства. Здесь можно открыть модель для редактирования в конструкторе или удалить её из памяти браузера.</p>
-        <div class="button-stack">
-          <button type="button" class="done-btn secondary-btn" id="showLocalModelList" style="background:#475569;">Список локальных моделей</button>
-        </div>
-        <div class="model-list collapsed" id="modelList"></div>
+        <p class="section-note">Модели, сохранённые в браузере этого устройства. В строке модели оставлены только основные действия.</p>
+        <div class="model-list" id="modelList"></div>
       </div>
     </div>
     <div class="control">
@@ -380,6 +387,8 @@ small{display:block;color:var(--muted);margin-top:4px;line-height:1.35}
 </div>
 
 <script>
+const CLOCK_CACHE_BUST_VERSION="SAFE-BASE-01";
+
 
 function showClockEmergencyError(error){
   try{
@@ -398,8 +407,7 @@ window.addEventListener("unhandledrejection",function(event){
   showClockEmergencyError(event.reason || "Unhandled promise rejection");
 });
 
-// CLOCK_ENGINE_VERSION: 20260612-BUILD-38-OPEN-FIX
-const CLOCK_CACHE_BUST_VERSION="20260612-BUILD-38-OPEN-FIX";
+// CLOCK_ENGINE_VERSION: SAFE-BASE-01
 
 const canvas=document.getElementById("clock");
 const ctx=canvas.getContext("2d");
@@ -590,30 +598,12 @@ function showStartModelInstallOffer(modelName){
 }
 
 
-/* Cache policy: HTML versions must not be trapped by an old service worker.
-   We register the service worker with a version query and force updateViaCache:"none".
-   This keeps PWA install support, but tells Chrome to check the network for the SW script. */
+/* Production/PWA mode: service worker stays registered.
+   Android installation uses manifest + service worker + start_url. */
 if("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost")){
-  window.addEventListener("load",async()=>{
-    try{
-      if("caches" in window){
-        const keys=await caches.keys();
-        await Promise.all(keys
-          .filter(key=>/clock|ClockViewer|trustworthy-ai-glossary/i.test(key))
-          .map(key=>caches.delete(key)));
-      }
-    }catch(e){
-      console.log("Cache cleanup skipped:",e);
-    }
-
-    try{
-      const swUrl="clock_service_worker.js?v="+encodeURIComponent(CLOCK_CACHE_BUST_VERSION);
-      const reg=await navigator.serviceWorker.register(swUrl,{updateViaCache:"none"});
-      if(reg && reg.update)reg.update().catch(()=>{});
-      console.log("Clock service worker registered:",swUrl);
-    }catch(e){
-      console.log("Service worker registration error:",e);
-    }
+  window.addEventListener("load",()=>{
+    navigator.serviceWorker.register("clock_service_worker.js?v="+encodeURIComponent(CLOCK_CACHE_BUST_VERSION),{updateViaCache:"none"})
+      .catch(e=>console.log("Service worker registration error:",e));
   });
 }
 
@@ -1446,7 +1436,6 @@ function saveModels(models){
 const modelNameInput=document.getElementById("modelName");
 const modelStatus=document.getElementById("modelStatus");
 const modelList=document.getElementById("modelList");
-const showLocalModelListButton=document.getElementById("showLocalModelList");
 const modelPicker=document.getElementById("modelPicker");
 const modelPickerList=document.getElementById("modelPickerList");
 const modelPickerImportBox=document.getElementById("modelPickerImportBox");
@@ -1456,22 +1445,6 @@ const modelPickerExit=document.getElementById("modelPickerExit");
 const modelPickerStatus=document.getElementById("modelPickerStatus");
 const importLocalModelFile=document.getElementById("importLocalModelFile");
 const restoreAllLocalDataFile=document.getElementById("restoreAllLocalDataFile");
-
-
-if(showLocalModelListButton){
-  showLocalModelListButton.onclick=()=>{
-    if(!modelList)return;
-    const isCollapsed=modelList.classList.contains("collapsed");
-    if(isCollapsed){
-      renderModelList();
-      modelList.classList.remove("collapsed");
-      showLocalModelListButton.textContent="Скрыть список локальных моделей";
-    }else{
-      modelList.classList.add("collapsed");
-      showLocalModelListButton.textContent="Список локальных моделей";
-    }
-  };
-}
 
 function makeLocalModelObject(name,settings){
   const rawName=makeLocalModelName((name || modelNameInput.value || "local-clock-model").trim());
@@ -1497,6 +1470,23 @@ function downloadJsonObject(obj,filename){
   URL.revokeObjectURL(url);
 }
 
+function collectDeviceOverridesForBackup(){
+  const overrides={};
+
+  try{
+    for(let i=0;i<localStorage.length;i++){
+      const key=localStorage.key(i);
+      if(key && key.startsWith("clock_device_override_")){
+        overrides[key]=JSON.parse(localStorage.getItem(key));
+      }
+    }
+  }catch(e){
+    console.log("Device override backup error:",e);
+  }
+
+  return overrides;
+}
+
 function makeAllLocalDataBackupObject(){
   const allModels=loadModels();
   const localOnlyModels={};
@@ -1511,16 +1501,18 @@ function makeAllLocalDataBackupObject(){
     schema:"ClockViewerLocalBackup/v1",
     createdAt:new Date().toISOString(),
     engine:"ClockViewerAndroid.html",
-    models:localOnlyModels
+    models:localOnlyModels,
+    deviceOverrides:collectDeviceOverridesForBackup()
   };
 }
 
 function backupAllLocalData(){
   const backup=makeAllLocalDataBackupObject();
   const modelCount=Object.keys(backup.models||{}).length;
+  const overrideCount=Object.keys(backup.deviceOverrides||{}).length;
 
   downloadJsonObject(backup,"clock_local_backup.json");
-  showModelStatus("✅ Backup создан: локальных моделей "+modelCount+". Файл: clock_local_backup.json","backupAllLocalData");
+  showModelStatus("✅ Backup создан: моделей "+modelCount+", настроек устройства "+overrideCount+". Файл: clock_local_backup.json","backupAllLocalData");
 }
 
 function restoreAllLocalDataFromObject(obj){
@@ -1530,6 +1522,7 @@ function restoreAllLocalDataFromObject(obj){
   }
 
   const models=obj.models && typeof obj.models==="object" ? obj.models : null;
+  const deviceOverrides=obj.deviceOverrides && typeof obj.deviceOverrides==="object" ? obj.deviceOverrides : {};
 
   if(!models){
     showModelStatus("Ошибка Restore: в файле нет блока models.",null);
@@ -1547,8 +1540,20 @@ function restoreAllLocalDataFromObject(obj){
   const mergedModels={...currentModels,...normalizedModels};
   saveModels(mergedModels);
 
+  let restoredOverrides=0;
+  Object.keys(deviceOverrides).forEach(key=>{
+    if(key.startsWith("clock_device_override_")){
+      try{
+        localStorage.setItem(key,JSON.stringify(deviceOverrides[key]));
+        restoredOverrides++;
+      }catch(e){
+        console.log("Device override restore error:",key,e);
+      }
+    }
+  });
+
   renderModelList();
-  showModelStatus("✅ Restore выполнен: локальных моделей "+Object.keys(normalizedModels).length+".", "restoreAllLocalDataButton");
+  showModelStatus("✅ Restore выполнен: локальных моделей "+Object.keys(normalizedModels).length+", настроек устройства "+restoredOverrides+".", "restoreAllLocalDataButton");
 }
 
 
@@ -1689,6 +1694,14 @@ if(restoreAllLocalDataFile){
   };
 }
 
+document.getElementById("saveDeviceOverride").onclick=()=>{
+  saveDeviceOverride(currentGitHubModelId || modelNameInput.value);
+};
+
+document.getElementById("clearDeviceOverride").onclick=()=>{
+  clearDeviceOverride(currentGitHubModelId || modelNameInput.value);
+};
+
 if(modelPickerImportJson){
   modelPickerImportJson.onclick=()=>{
     if(importLocalModelFile){
@@ -1718,10 +1731,6 @@ function renderModelList(){
 
   if(!names.length){
     modelStatus.textContent="Локальных моделей на этом устройстве пока нет.";
-    const empty=document.createElement("div");
-    empty.className="model-row";
-    empty.textContent="Локальных моделей пока нет.";
-    modelList.appendChild(empty);
     return;
   }
 
@@ -1765,13 +1774,15 @@ function renderModelList(){
       saveModels(fresh);
 
       const startName=makeLocalModelName(getAutostartLocalModel());
-      if(startName.toLowerCase()===name.toLowerCase()){
-        try{
-          localStorage.removeItem(AUTOSTART_LOCAL_MODEL_KEY);
-        }catch(e){}
-        showModelStatus("Удалена локальная стартовая модель: "+name+". Стартовая модель очищена.",null);
+      if(startName.toLowerCase()===makeLocalModelName(name).toLowerCase()){
+        clearAutostartLocalModel();
+        modelStatus.textContent="Удалена локальная модель: "+name+". Она была стартовой, поэтому стартовая модель очищена.";
       }else{
-        showModelStatus("Удалена локальная модель: "+name,null);
+        modelStatus.textContent="Удалена локальная модель: "+name;
+      }
+
+      if(modelNameInput.value.toLowerCase()===name.toLowerCase()){
+        modelNameInput.value="";
       }
 
       renderModelList();
@@ -1937,44 +1948,79 @@ function showModelStatus(message,buttonId){
   }
 }
 
-
-function findExistingLocalModelNameForClock(indexTitle,modelId,normalizedId){
-  const models=loadModels();
-  const names=Object.keys(models).filter(isLocalModelName);
-  const candidates=[
-    indexTitle,
-    modelId,
-    normalizedId,
-    normalizeModelId(indexTitle || modelId || normalizedId)
-  ]
-    .filter(Boolean)
-    .map(makeLocalModelName);
-
-  for(const candidate of candidates){
-    const exact=names.find(n=>n===candidate);
-    if(exact)return exact;
-    const lower=names.find(n=>n.toLowerCase()===candidate.toLowerCase());
-    if(lower)return lower;
-  }
-
-  return "";
+function getDeviceOverrideKey(modelId){
+  return "clock_device_override_"+normalizeModelId(modelId);
 }
 
-async function loadModelFromGitHubById(modelId,sourceLabel,makeAutostart=false,indexTitle=""){
-  const normalizedId=normalizeModelId(modelId);
+function collectDeviceOverrideSettings(){
+  return {
+    clockSizeValue,
+    dialAspect,
+    autoDialAspect,
+    symbolSize,
+    svgSymbolScalePercent,
+    svgSymbolScale:svgSymbolScalePercent,
+    radiusPercent,
+    showDigitalClock,
+    showDigital24,
+    showSecondHand
+  };
+}
 
-  if(makeAutostart){
-    const existingLocalName=findExistingLocalModelNameForClock(indexTitle,modelId,normalizedId);
-    if(existingLocalName){
-      const loaded=loadLocalModelByName(existingLocalName,true);
-      if(loaded){
-        modelStatus.textContent="Найдена существующая локальная модель. Стартовой назначена: "+existingLocalName;
-        if(modelPickerStatus)modelPickerStatus.textContent="Используется уже сохранённая локальная модель: "+existingLocalName;
-        return true;
-      }
-    }
+function applyDeviceOverrideSettings(settings){
+  if(!settings || typeof settings!=="object")return;
+
+  if(settings.clockSizeValue!==undefined)clockSizeValue=Number(settings.clockSizeValue);
+  if(settings.dialAspect!==undefined)dialAspect=Number(settings.dialAspect);
+  if(settings.autoDialAspect!==undefined)autoDialAspect=Boolean(settings.autoDialAspect);
+  if(settings.symbolSize!==undefined)symbolSize=Number(settings.symbolSize);
+  if(settings.svgSymbolScalePercent!==undefined || settings.svgSymbolScale!==undefined || settings.svgScale!==undefined){
+    svgSymbolScalePercent=Number(settings.svgSymbolScalePercent ?? settings.svgSymbolScale ?? settings.svgScale);
+  }
+  if(settings.radiusPercent!==undefined)radiusPercent=Number(settings.radiusPercent);
+  if(settings.showDigitalClock!==undefined)showDigitalClock=Boolean(settings.showDigitalClock);
+  if(settings.showDigital24!==undefined)showDigital24=Boolean(settings.showDigital24);
+  if(settings.showSecondHand!==undefined)showSecondHand=Boolean(settings.showSecondHand);
+
+  svgSymbolCacheKey="";
+  customSvgCacheKey="";
+  syncControlsFromState();
+}
+
+function loadDeviceOverride(modelId){
+  try{
+    const raw=localStorage.getItem(getDeviceOverrideKey(modelId));
+    if(!raw)return null;
+    return JSON.parse(raw);
+  }catch(e){
+    return null;
+  }
+}
+
+function saveDeviceOverride(modelId){
+  const id=normalizeModelId(modelId || currentGitHubModelId || modelNameInput.value);
+  if(!id){
+    showModelStatus("Сначала загрузите или выберите модель.",null);
+    return;
   }
 
+  localStorage.setItem(getDeviceOverrideKey(id),JSON.stringify(collectDeviceOverrideSettings()));
+  showModelStatus("✅ Настройка этого устройства сохранена для модели: "+id,"saveDeviceOverride");
+}
+
+function clearDeviceOverride(modelId){
+  const id=normalizeModelId(modelId || currentGitHubModelId || modelNameInput.value);
+  if(!id){
+    showModelStatus("Сначала загрузите или выберите модель.",null);
+    return;
+  }
+
+  localStorage.removeItem(getDeviceOverrideKey(id));
+  showModelStatus("🧹 Настройка этого устройства сброшена для модели: "+id,"clearDeviceOverride");
+}
+
+async function loadModelFromGitHubById(modelId,sourceLabel,makeAutostart=false){
+  const normalizedId=normalizeModelId(modelId);
   const modelUrl="models/"+normalizedId+".json?v="+Date.now()+"_"+Math.random().toString(36).slice(2);
 
   try{
@@ -1984,7 +2030,7 @@ async function loadModelFromGitHubById(modelId,sourceLabel,makeAutostart=false,i
     const response=await fetch(modelUrl,{cache:"no-store"});
 
     if(!response.ok){
-      const msg="Не удалось загрузить модель: "+modelUrl+" ("+response.status+")";
+      const msg="Не удалось загрузить модель: "+modelUrl;
       modelStatus.textContent=msg;
       if(modelPickerStatus)modelPickerStatus.textContent=msg;
       console.log("Model fetch failed:",response.status,response.statusText,modelUrl);
@@ -2005,18 +2051,22 @@ async function loadModelFromGitHubById(modelId,sourceLabel,makeAutostart=false,i
     applySettings(settings);
     currentGitHubModelId=normalizedId;
 
-    const displayName=data.name || data.title || indexTitle || data.id || normalizedId;
-    modelNameInput.value=displayName;
+    const localOverride=loadDeviceOverride(normalizedId);
+    if(localOverride){
+      applyDeviceOverrideSettings(localOverride);
+    }
+
+    modelNameInput.value=data.name || data.title || data.id || normalizedId;
+    const displayName=data.name || data.title || normalizedId;
+    const localName=saveCurrentSettingsAsLocalModel(displayName);
 
     if(makeAutostart){
-      const localName=saveCurrentSettingsAsLocalModel(displayName);
       setAutostartLocalModel(localName);
-      modelStatus.textContent="GitHub-модель загружена, сохранена как локальная и назначена стартовой: "+localName;
-      if(modelPickerStatus)modelPickerStatus.textContent="Стартовая локальная модель создана: "+localName;
-    }else{
-      modelStatus.textContent="GitHub-модель открыта: "+displayName;
-      if(modelPickerStatus)modelPickerStatus.textContent="Модель открыта: "+displayName;
     }
+
+    modelStatus.textContent=localOverride
+      ? "Модель загружена из GitHub, применена локальная настройка устройства и сохранена как локальная: "+localName
+      : "Модель загружена из GitHub и сохранена как локальная: "+localName;
 
     try{
       localStorage.setItem("clock_last_github_model",normalizedId);
@@ -2025,7 +2075,7 @@ async function loadModelFromGitHubById(modelId,sourceLabel,makeAutostart=false,i
     if(modelPicker)modelPicker.classList.remove("active");
     return true;
   }catch(e){
-    const msg="Ошибка загрузки модели из GitHub: "+normalizedId+". Подробности: "+(e && e.message ? e.message : e);
+    const msg="Ошибка загрузки модели из GitHub: "+normalizedId;
     modelStatus.textContent=msg;
     if(modelPickerStatus)modelPickerStatus.textContent=msg;
     console.log("Ошибка загрузки модели:",e);
@@ -2312,10 +2362,10 @@ async function showModelPickerFromIndex(){
         item.title,
         item.description || "GitHub-модель",
         async ()=>{
-          await loadModelFromGitHubById(item.id,"picker",false,item.title);
+          await loadModelFromGitHubById(item.id,"picker",false);
         },
         async ()=>{
-          await loadModelFromGitHubById(item.id,"picker",true,item.title);
+          await loadModelFromGitHubById(item.id,"picker",true);
         }
       ));
     });
