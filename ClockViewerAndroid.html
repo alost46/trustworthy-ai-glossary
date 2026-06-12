@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Clock">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>Clock Viewer - SPLIT-MODE-BLACKSCREEN-RECOVERY-31</title>
+<title>Clock Viewer - SPLIT-MODE-SWITCH-STARTMODEL-SAFE</title>
 <style>
 :root{--bg:#0f172a;--text:#1f2937;--muted:#64748b}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -121,7 +121,7 @@ small{display:block;color:var(--muted);margin-top:4px;line-height:1.35}
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="manifest" href="clock_manifest.json">
 <link rel="apple-touch-icon" href="clock_icon_192.png">
-<meta name="clock-engine-version" content="SPLIT-MODE-BLACKSCREEN-RECOVERY-31">
+<meta name="clock-engine-version" content="SPLIT-MODE-SWITCH-STARTMODEL-SAFE">
 </head>
 <body>
 
@@ -397,7 +397,7 @@ window.addEventListener("unhandledrejection",function(event){
   showClockEmergencyError(event.reason || "Unhandled promise rejection");
 });
 
-// CLOCK_ENGINE_VERSION: SPLIT-MODE-BLACKSCREEN-RECOVERY-31
+// CLOCK_ENGINE_VERSION: SPLIT-MODE-SWITCH-STARTMODEL-SAFE
 
 const canvas=document.getElementById("clock");
 const ctx=canvas.getContext("2d");
@@ -687,7 +687,6 @@ let customSvgCacheKey="";
 
 const STORAGE_KEY="clock_constructor_models_v6";
 const AUTOSTART_LOCAL_MODEL_KEY="clock_autostart_local_model";
-const LOCAL_MODEL_SNAPSHOT_KEY="clock_local_model_snapshots_v1";
 const VIEWER_URL="https://alost46.github.io/trustworthy-ai-glossary/ClockViewerAndroid.html";
 let currentGitHubModelId="";
 
@@ -1424,106 +1423,33 @@ function saveModels(models){
   localStorage.setItem(STORAGE_KEY,JSON.stringify(models));
 }
 
-function normalizeSnapshotAlias(value){
-  return normalizeModelId(String(value || "").replace(/L$/i,""));
+function getLocalModelBaseId(name){
+  return normalizeModelId(String(name||"").trim().replace(/L$/i,""));
 }
 
-function getModelAliasList(){
-  let autostartName="";
-  try{
-    autostartName=getAutostartLocalModel();
-  }catch(e){
-    autostartName="";
-  }
-
-  const aliases=[
-    currentGitHubModelId,
-    modelNameInput && modelNameInput.value,
-    modelNameInput && modelNameInput.value ? String(modelNameInput.value).replace(/L$/i,"") : "",
-    autostartName,
-    autostartName ? String(autostartName).replace(/L$/i,"") : ""
-  ];
-
-  return [...new Set(aliases.map(normalizeSnapshotAlias).filter(Boolean))];
-}
-
-function loadLocalModelSnapshots(){
-  try{
-    const raw=localStorage.getItem(LOCAL_MODEL_SNAPSHOT_KEY);
-    if(!raw)return {};
-    const data=JSON.parse(raw);
-    if(data && typeof data==="object")return data;
-    return {};
-  }catch(e){
-    return {};
-  }
-}
-
-function saveLocalModelSnapshots(snapshots){
-  try{
-    localStorage.setItem(LOCAL_MODEL_SNAPSHOT_KEY,JSON.stringify(snapshots || {}));
-  }catch(e){
-    console.log("Не удалось сохранить снимки локальных моделей:",e);
-  }
-}
-
-function rememberLocalModelSnapshot(localName,settings,extraAliases){
-  const aliases=[
-    localName,
-    String(localName || "").replace(/L$/i,""),
-    ...(Array.isArray(extraAliases) ? extraAliases : []),
-    ...getModelAliasList()
-  ].map(normalizeSnapshotAlias).filter(Boolean);
-
-  if(!aliases.length)return;
-
-  const snapshots=loadLocalModelSnapshots();
-  const snapshot={
-    schema:"ClockViewerLocalSnapshot/v1",
-    localName:makeLocalModelName(localName || "local-clock-model"),
-    savedAt:new Date().toISOString(),
-    settings:settings || collectCurrentSettings()
-  };
-
-  [...new Set(aliases)].forEach(alias=>{
-    snapshots[alias]=snapshot;
-  });
-
-  saveLocalModelSnapshots(snapshots);
-}
-
-function findLocalModelSnapshot(modelId,title){
-  const snapshots=loadLocalModelSnapshots();
-  const aliases=[
-    modelId,
-    title,
-    makeLocalModelName(modelId),
-    makeLocalModelName(title),
-    normalizeModelId(modelId),
-    normalizeModelId(title)
-  ].map(normalizeSnapshotAlias).filter(Boolean);
-
-  for(const alias of [...new Set(aliases)]){
-    if(snapshots[alias])return snapshots[alias];
-  }
-
-  return null;
-}
-
-function restoreLocalSnapshotForModel(modelId,title){
-  const snapshot=findLocalModelSnapshot(modelId,title);
-  if(!snapshot || !snapshot.settings)return "";
-
-  const localName=makeLocalModelName(snapshot.localName || title || modelId || "local-clock-model");
+function findLocalModelNameForStartModel(name){
+  const requested=String(name||"").trim();
+  if(!requested)return "";
   const models=loadModels();
+  const names=Object.keys(models);
 
-  models[localName]=snapshot.settings;
-  saveModels(models);
+  let resolved=names.find(n=>n===requested);
+  if(resolved)return resolved;
 
-  rememberLocalModelSnapshot(localName,snapshot.settings,[modelId,title]);
-  return localName;
+  resolved=names.find(n=>n.toLowerCase()===requested.toLowerCase());
+  if(resolved)return resolved;
+
+  const requestedLocal=makeLocalModelName(requested);
+  resolved=names.find(n=>n===requestedLocal);
+  if(resolved)return resolved;
+
+  resolved=names.find(n=>n.toLowerCase()===requestedLocal.toLowerCase());
+  if(resolved)return resolved;
+
+  const requestedId=normalizeModelId(requested);
+  resolved=names.find(n=>isLocalModelName(n) && getLocalModelBaseId(n)===requestedId);
+  return resolved || "";
 }
-
 
 const modelNameInput=document.getElementById("modelName");
 const modelStatus=document.getElementById("modelStatus");
@@ -1653,11 +1579,8 @@ function saveCurrentSettingsAsAutostartLocalModel(name,settings){
   const rawName=makeLocalModelName((name || modelNameInput.value || currentGitHubModelId || "local-clock-model").trim());
   const models=loadModels();
 
-  const savedSettings=settings || collectCurrentSettings();
-  models[rawName]=savedSettings;
+  models[rawName]=settings || collectCurrentSettings();
   saveModels(models);
-
-  rememberLocalModelSnapshot(rawName,savedSettings,[name,currentGitHubModelId,modelNameInput.value]);
 
   modelNameInput.value=rawName;
   currentGitHubModelId="";
@@ -1682,13 +1605,8 @@ function saveLocalModelByName(name,settings){
 
   const rawName=makeLocalModelName(baseName);
   const models=loadModels();
-  const savedSettings=settings || collectCurrentSettings();
-
-  models[rawName]=savedSettings;
+  models[rawName]=settings || collectCurrentSettings();
   saveModels(models);
-
-  rememberLocalModelSnapshot(rawName,savedSettings,[name,currentGitHubModelId,modelNameInput.value]);
-
   modelNameInput.value=rawName;
   currentGitHubModelId="";
   setAddressToLocalModel(rawName);
@@ -1699,9 +1617,19 @@ function saveLocalModelByName(name,settings){
 
 function exportCurrentLocalModel(){
   const rawName=makeLocalModelName((modelNameInput.value || currentGitHubModelId || "local-clock-model").trim());
-  const obj=makeLocalModelObject(rawName,collectCurrentSettings());
+  const settings=collectCurrentSettings();
+  const models=loadModels();
+  models[rawName]=settings;
+  saveModels(models);
+
+  const obj=makeLocalModelObject(rawName,settings);
   downloadJsonObject(obj,safeFileName(obj.name || obj.id)+".json");
-  modelStatus.textContent="Экспортирована локальная модель: "+(obj.name || obj.id);
+
+  modelNameInput.value=rawName;
+  currentGitHubModelId="";
+  setAddressToLocalModel(rawName);
+  renderModelList();
+  modelStatus.textContent="Экспортирована и сохранена локальная модель: "+(obj.name || obj.id);
 }
 
 function importLocalModelObject(obj){
@@ -2098,6 +2026,14 @@ function clearDeviceOverride(modelId){
 
 async function loadModelFromGitHubById(modelId,sourceLabel,makeAutostart=false){
   const normalizedId=normalizeModelId(modelId);
+
+  if(makeAutostart){
+    const localName=findLocalModelNameForStartModel(normalizedId);
+    if(localName){
+      return loadLocalModelByName(localName,true);
+    }
+  }
+
   const modelUrl="models/"+normalizedId+".json?v="+Date.now()+"_"+Math.random().toString(36).slice(2);
 
   try{
@@ -2136,29 +2072,13 @@ async function loadModelFromGitHubById(modelId,sourceLabel,makeAutostart=false){
     modelNameInput.value=data.name || data.title || data.id || normalizedId;
     const displayName=data.name || data.title || normalizedId;
 
-    // Важно: если локальная версия уже существует, не перезаписываем её GitHub-вариантом.
-    // Это защищает подогнанную пользователем локальную модель.
-    let localName=restoreLocalSnapshotForModel(normalizedId,displayName);
-    let existingLocalName="";
-
-    if(!localName){
-      existingLocalName=findExistingLocalModelForGitHub(normalizedId,displayName);
-      localName=existingLocalName;
-    }
-
-    if(!localName){
-      localName=saveCurrentSettingsAsLocalModel(displayName);
-    }
-
     if(makeAutostart){
-      setAutostartLocalModel(localName);
+      setAutostartLocalModel(normalizedId);
     }
 
-    modelStatus.textContent=existingLocalName
-      ? "Модель загружена из GitHub. Существующая локальная версия сохранена без перезаписи: "+localName
-      : (localOverride
-        ? "Модель загружена из GitHub, применена локальная настройка устройства и сохранена как локальная: "+localName
-        : "Модель загружена из GitHub и сохранена как локальная: "+localName);
+    modelStatus.textContent=localOverride
+      ? "Модель загружена из GitHub, применена локальная настройка устройства: "+displayName
+      : "Модель загружена из GitHub: "+displayName;
 
     try{
       localStorage.setItem("clock_last_github_model",normalizedId);
@@ -2175,7 +2095,7 @@ async function loadModelFromGitHubById(modelId,sourceLabel,makeAutostart=false){
   }
 }
 
-async function loadModelFromGitHubQuery(){
+function loadModelFromGitHubQuery(){
   const params=new URLSearchParams(location.search);
   const modelParam=params.get("model");
   if(!modelParam)return false;
@@ -2240,12 +2160,7 @@ function loadLocalModelByName(name,makeAutostart=false){
 
 function loadLocalModelFromQuery(){
   const params=new URLSearchParams(location.search);
-  let localParam=params.get("local");
-
-  if(!localParam && isLocalRunMode()){
-    localParam=getAutostartLocalModel();
-  }
-
+  const localParam=params.get("local");
   if(!localParam)return false;
   return loadLocalModelByName(localParam);
 }
@@ -2254,32 +2169,17 @@ function makeLocalModelLaunchLink(name){
   return location.origin+location.pathname+"?mode=local";
 }
 
-
-function getPreferredAutostartLocalName(name){
-  const localName=makeLocalModelName(name || currentGitHubModelId || modelNameInput.value || "local-clock-model");
-  const models=loadModels();
-
-  // Если такая локальная модель уже сохранена, не перезаписываем её GitHub-вариантом.
-  // Просто указываем стартовую кнопку на неё.
-  if(models && models[localName]){
-    return localName;
-  }
-
-  return localName;
-}
-
 function setAutostartLocalModel(name){
-  const localName=getPreferredAutostartLocalName(name);
+  const startName=String(name||"").trim();
+  if(!startName)return;
 
   try{
-    localStorage.setItem(AUTOSTART_LOCAL_MODEL_KEY,localName);
+    localStorage.setItem(AUTOSTART_LOCAL_MODEL_KEY,startName);
   }catch(e){
     console.log("Не удалось сохранить стартовую модель:",e);
   }
 
-  if(typeof showStartModelInstallOffer==="function"){
-    showStartModelInstallOffer(localName);
-  }
+  showStartModelInstallOffer(startName);
 }
 
 function getAutostartLocalModel(){
@@ -2329,10 +2229,16 @@ function openMainModelMenu(){
   showModelPickerFromIndex();
 }
 
-function loadAutostartLocalModel(){
+async function loadAutostartLocalModel(){
   const name=getAutostartLocalModel();
   if(!name)return false;
-  return loadLocalModelByName(name,false);
+
+  const localName=findLocalModelNameForStartModel(name);
+  if(localName){
+    return loadLocalModelByName(localName,false);
+  }
+
+  return await loadModelFromGitHubById(name,"autostart",false);
 }
 
 function makeActionButton(text,cssClass,onClick){
@@ -2427,51 +2333,6 @@ function shouldShowLocalPanel(){
   return params.has("localpanel") || params.get("panel")==="local";
 }
 
-
-function findExistingLocalModelForGitHub(modelId,title){
-  const models=loadModels();
-  const names=Object.keys(models || {});
-
-  const candidates=[
-    makeLocalModelName(modelId),
-    makeLocalModelName(title),
-    makeLocalModelName(normalizeModelId(modelId)),
-    makeLocalModelName(normalizeModelId(title))
-  ].filter(Boolean);
-
-  for(const candidate of candidates){
-    const exact=names.find(n=>n===candidate);
-    if(exact)return exact;
-
-    const lower=names.find(n=>n.toLowerCase()===String(candidate).toLowerCase());
-    if(lower)return lower;
-  }
-
-  return "";
-}
-
-async function startPreferredModelFromPicker(modelId,title){
-  const restoredLocalName=restoreLocalSnapshotForModel(modelId,title);
-
-  if(restoredLocalName){
-    if(modelPickerStatus){
-      modelPickerStatus.textContent="Восстановлена сохранённая локальная версия. Делаю стартовой: "+restoredLocalName;
-    }
-    return loadLocalModelByName(restoredLocalName,true);
-  }
-
-  const localName=findExistingLocalModelForGitHub(modelId,title);
-
-  if(localName){
-    if(modelPickerStatus){
-      modelPickerStatus.textContent="Найдена локальная версия. Делаю стартовой: "+localName;
-    }
-    return loadLocalModelByName(localName,true);
-  }
-
-  return await loadModelFromGitHubById(modelId,"picker",true);
-}
-
 async function showModelPickerFromIndex(){
   if(!modelPicker || !modelPickerList || !modelPickerStatus)return false;
 
@@ -2524,7 +2385,7 @@ async function showModelPickerFromIndex(){
           await loadModelFromGitHubById(item.id,"picker",false);
         },
         async ()=>{
-          await startPreferredModelFromPicker(item.id,item.title);
+          await loadModelFromGitHubById(item.id,"picker",true);
         }
       ));
     });
@@ -2611,15 +2472,8 @@ function setAddressToLocalModel(name){
 function saveCurrentSettingsAsLocalModel(name){
   const localName=makeLocalModelName(name);
   const models=loadModels();
-  const settings=collectCurrentSettings();
-
-  // Не перезаписываем уже существующую локальную модель GitHub-вариантом.
-  if(!models[localName]){
-    models[localName]=settings;
-    saveModels(models);
-    rememberLocalModelSnapshot(localName,settings,[name,currentGitHubModelId,modelNameInput.value]);
-  }
-
+  models[localName]=collectCurrentSettings();
+  saveModels(models);
   modelNameInput.value=localName;
   currentGitHubModelId="";
   setAddressToLocalModel(localName);
@@ -2662,27 +2516,7 @@ function installLocalModelButtonHandlers(){
 
   if(exportBtn){
     exportBtn.onclick=()=>{
-      const name=makeLocalModelName((modelNameInput.value || currentGitHubModelId || "local-clock-model").trim());
-      const obj={
-        schema:"ClockViewerLocalModel/v1",
-        id:normalizeModelId(name),
-        name:name,
-        savedAt:new Date().toISOString(),
-        settings:collectCurrentSettings()
-      };
-
-      const json=JSON.stringify(obj,null,2);
-      const blob=new Blob([json],{type:"application/json;charset=utf-8"});
-      const url=URL.createObjectURL(blob);
-      const a=document.createElement("a");
-      a.href=url;
-      a.download=safeFileName(name)+".json";
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
-
-      modelStatus.textContent="Экспортирована локальная модель: "+name;
+      exportCurrentLocalModel();
     };
   }
 
@@ -2733,40 +2567,25 @@ async function initClockApp(){
   renderModelList();
 
   const loadedFromHash=loadSettingsFromURL();
-
   if(!loadedFromHash){
     if(isLocalRunMode()){
       const loadedFromLocal=loadLocalModelFromQuery();
-
       if(!loadedFromLocal){
-        const loadedFromAutostart=loadAutostartLocalModel();
-
+        const loadedFromAutostart=await loadAutostartLocalModel();
         if(!loadedFromAutostart){
-          const shownLocalPanel=showLocalModelsPanel();
-
-          // Аварийный выход из чёрного экрана:
-          // если локальный режим ничего не нашёл, показываем главное меню GitHub-моделей.
-          if(!shownLocalPanel){
-            await showModelPickerFromIndex();
-          }
+          showLocalModelsPanel();
         }
       }
     }else if(shouldShowLocalPanel()){
-      const shownLocalPanel=showLocalModelsPanel();
-      if(!shownLocalPanel){
-        await showModelPickerFromIndex();
-      }
+      showLocalModelsPanel();
     }else if(shouldForceMainMenu()){
       await showModelPickerFromIndex();
     }else{
       const loadedFromLocal=loadLocalModelFromQuery();
-
       if(!loadedFromLocal){
         const loadedFromQuery=await loadModelFromGitHubQuery();
-
         if(!loadedFromQuery){
-          const loadedFromAutostart=loadAutostartLocalModel();
-
+          const loadedFromAutostart=await loadAutostartLocalModel();
           if(!loadedFromAutostart){
             await showModelPickerFromIndex();
           }
