@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Clock">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>Clock Viewer - SAFE-BASE-02-LOCAL-LIST-NODEVICE</title>
+<title>Clock Viewer - SAFE-BASE-03-LOCAL-LIST-NODEVICE-OPENFIX</title>
 <style>
 :root{--bg:#0f172a;--text:#1f2937;--muted:#64748b}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -126,12 +126,12 @@ small{display:block;color:var(--muted);margin-top:4px;line-height:1.35}
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Clock Viewer">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<link rel="manifest" href="clock_manifest.json?v=SAFE-BASE-02-LOCAL-LIST-NODEVICE">
-<link rel="apple-touch-icon" href="clock_icon_192.png?v=SAFE-BASE-02-LOCAL-LIST-NODEVICE">
-<meta name="clock-engine-version" content="SAFE-BASE-02-LOCAL-LIST-NODEVICE">
+<link rel="manifest" href="clock_manifest.json?v=SAFE-BASE-03-LOCAL-LIST-NODEVICE-OPENFIX">
+<link rel="apple-touch-icon" href="clock_icon_192.png?v=SAFE-BASE-03-LOCAL-LIST-NODEVICE-OPENFIX">
+<meta name="clock-engine-version" content="SAFE-BASE-03-LOCAL-LIST-NODEVICE-OPENFIX">
 </head>
 <body>
-<div id="clockBuildBadge" class="build-badge">BUILD SAFE-BASE-02</div>
+<div id="clockBuildBadge" class="build-badge">BUILD SAFE-BASE-03</div>
 
 
 <div class="clock-screen">
@@ -381,7 +381,7 @@ small{display:block;color:var(--muted);margin-top:4px;line-height:1.35}
 </div>
 
 <script>
-const CLOCK_CACHE_BUST_VERSION="SAFE-BASE-02-LOCAL-LIST-NODEVICE";
+const CLOCK_CACHE_BUST_VERSION="SAFE-BASE-03-LOCAL-LIST-NODEVICE-OPENFIX";
 
 
 function showClockEmergencyError(error){
@@ -401,7 +401,7 @@ window.addEventListener("unhandledrejection",function(event){
   showClockEmergencyError(event.reason || "Unhandled promise rejection");
 });
 
-// CLOCK_ENGINE_VERSION: SAFE-BASE-02-LOCAL-LIST-NODEVICE
+// CLOCK_ENGINE_VERSION: SAFE-BASE-03-LOCAL-LIST-NODEVICE-OPENFIX
 
 const canvas=document.getElementById("clock");
 const ctx=canvas.getContext("2d");
@@ -1961,9 +1961,7 @@ async function loadModelFromGitHubById(modelId,sourceLabel,makeAutostart=false){
       setAutostartLocalModel(localName);
     }
 
-    modelStatus.textContent=localOverride
-      ? "Модель загружена из GitHub, применена локальная настройка устройства и сохранена как локальная: "+localName
-      : "Модель загружена из GitHub и сохранена как локальная: "+localName;
+    modelStatus.textContent="Модель загружена из GitHub и сохранена как локальная: "+localName;
 
     try{
       localStorage.setItem("clock_last_github_model",normalizedId);
