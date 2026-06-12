@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Clock">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>Clock Viewer - SPLIT-MODE-SWITCH-STARTMODEL-SAFE</title>
+<title>Clock Viewer - LOCAL-L-START-CHECK</title>
 <style>
 :root{--bg:#0f172a;--text:#1f2937;--muted:#64748b}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -122,7 +122,7 @@ small{display:block;color:var(--muted);margin-top:4px;line-height:1.35}
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="manifest" href="clock_manifest.json">
 <link rel="apple-touch-icon" href="clock_icon_192.png">
-<meta name="clock-engine-version" content="SPLIT-MODE-SWITCH-STARTMODEL-SAFE">
+<meta name="clock-engine-version" content="LOCAL-L-START-CHECK">
 </head>
 <body>
 
@@ -1914,8 +1914,21 @@ function showModelStatus(message,buttonId){
   }
 }
 
-async function loadModelFromGitHubById(modelId,sourceLabel,makeAutostart=false){
+async function loadModelFromGitHubById(modelId,sourceLabel,makeAutostart=false,indexTitle=""){
   const normalizedId=normalizeModelId(modelId);
+
+  if(makeAutostart){
+    const existingLocalName=findExistingLocalModelNameForClock(indexTitle,modelId,normalizedId);
+    if(existingLocalName){
+      const loaded=loadLocalModelByName(existingLocalName,true);
+      if(loaded){
+        modelStatus.textContent="Найдена существующая локальная модель. Стартовой назначена: "+existingLocalName;
+        if(modelPickerStatus)modelPickerStatus.textContent="Используется уже сохранённая локальная модель: "+existingLocalName;
+        return true;
+      }
+    }
+  }
+
   const modelUrl="models/"+normalizedId+".json?v="+Date.now()+"_"+Math.random().toString(36).slice(2);
 
   try{
@@ -1946,15 +1959,18 @@ async function loadModelFromGitHubById(modelId,sourceLabel,makeAutostart=false){
     applySettings(settings);
     currentGitHubModelId=normalizedId;
 
-    modelNameInput.value=data.name || data.title || data.id || normalizedId;
-    const displayName=data.name || data.title || normalizedId;
-    const localName=saveCurrentSettingsAsLocalModel(displayName);
+    const displayName=data.name || data.title || indexTitle || data.id || normalizedId;
+    modelNameInput.value=displayName;
 
     if(makeAutostart){
+      const localName=saveCurrentSettingsAsLocalModel(displayName);
       setAutostartLocalModel(localName);
+      modelStatus.textContent="GitHub-модель сохранена как локальная и назначена стартовой: "+localName;
+      if(modelPickerStatus)modelPickerStatus.textContent="Создана локальная стартовая модель: "+localName;
+    }else{
+      modelStatus.textContent="Модель загружена из GitHub: "+displayName+". Чтобы сделать её локальной, нажмите ‘Сделать стартовой’ или ‘Сохранить локальную модель’.";
+      if(modelPickerStatus)modelPickerStatus.textContent="Открыта GitHub-модель: "+displayName;
     }
-
-    modelStatus.textContent="Модель загружена из GitHub и сохранена как локальная: "+localName;
 
     try{
       localStorage.setItem("clock_last_github_model",normalizedId);
@@ -2250,10 +2266,10 @@ async function showModelPickerFromIndex(){
         item.title,
         item.description || "GitHub-модель",
         async ()=>{
-          await loadModelFromGitHubById(item.id,"picker",false);
+          await loadModelFromGitHubById(item.id,"picker",false,item.title);
         },
         async ()=>{
-          await loadModelFromGitHubById(item.id,"picker",true);
+          await loadModelFromGitHubById(item.id,"picker",true,item.title);
         }
       ));
     });
@@ -2280,7 +2296,7 @@ async function showModelPickerFromIndex(){
       });
     }
 
-    modelPickerStatus.textContent="START-MODEL версия. Доступно моделей GitHub: "+items.length+", локальных: "+localNames.length+". Кнопка ‘Сделать стартовой’ задаёт модель для Android-иконки.";
+    modelPickerStatus.textContent="START-MODEL версия. Доступно моделей GitHub: "+items.length+", локальных: "+localNames.length+". Кнопка ‘Сделать стартовой’ сначала ищет локальную L-модель, а если её нет — создаёт её из GitHub.";
     return true;
   }catch(e){
     modelPickerStatus.textContent="Ошибка загрузки списка моделей. Можно импортировать присланный JSON-файл модели.";
@@ -2323,6 +2339,39 @@ function loadSettingsFromURL(){
 function makeLocalModelName(name){
   const raw=String(name||"local-clock-model").trim() || "local-clock-model";
   return /L$/i.test(raw) ? raw : raw+"L";
+}
+
+function makeBaseModelName(name){
+  return String(name||"").trim().replace(/L$/i,"");
+}
+
+function findExistingLocalModelNameForClock(){
+  const candidates=[...arguments]
+    .map(x=>String(x||"").trim())
+    .filter(Boolean);
+
+  if(!candidates.length)return "";
+
+  const models=loadModels();
+  const names=Object.keys(models).filter(isLocalModelName);
+
+  for(const candidate of candidates){
+    const localName=makeLocalModelName(candidate);
+    let found=names.find(n=>n===localName);
+    if(found)return found;
+
+    found=names.find(n=>n.toLowerCase()===localName.toLowerCase());
+    if(found)return found;
+  }
+
+  const normalizedCandidates=candidates
+    .map(x=>normalizeModelId(makeBaseModelName(x)))
+    .filter(Boolean);
+
+  return names.find(name=>{
+    const localBase=normalizeModelId(makeBaseModelName(name));
+    return normalizedCandidates.includes(localBase);
+  }) || "";
 }
 
 function setAddressToLocalModel(name){
