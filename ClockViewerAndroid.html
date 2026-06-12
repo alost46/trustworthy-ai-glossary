@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Clock">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>Clock Viewer - 20260612-NOCACHE-LOCAL-LIST-NODEVICE-1</title>
+<title>Clock Viewer - 20260612-BUILD-38-OPEN-FIX</title>
 <style>
 :root{--bg:#0f172a;--text:#1f2937;--muted:#64748b}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -111,6 +111,8 @@ small{display:block;color:var(--muted);margin-top:4px;line-height:1.35}
 #installPromptClose{background:#e2e8f0;color:#0f172a}
 
 #exitHint{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.72);color:#fff;padding:10px 16px;border-radius:12px;font-size:14px;line-height:1.35;opacity:0;pointer-events:none;transition:opacity .3s;z-index:40;box-shadow:0 6px 18px rgba(0,0,0,.28);max-width:calc(100vw - 32px);text-align:center}
+
+.build-marker{position:fixed;right:6px;bottom:6px;z-index:99999;background:rgba(255,255,255,.88);color:#0f172a;border:1px solid #cbd5e1;border-radius:8px;padding:4px 6px;font:11px/1.2 Arial,sans-serif;pointer-events:none;box-shadow:0 4px 12px rgba(0,0,0,.18)}
 @media(max-width:520px){
   .color-grid,.hex-controls,.time-grid,.model-grid{grid-template-columns:1fr}
   .hex-cell{font-size:9px;padding:4px 0}
@@ -124,9 +126,9 @@ small{display:block;color:var(--muted);margin-top:4px;line-height:1.35}
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Clock Viewer">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<link rel="manifest" href="clock_manifest.json?v=20260612-NOCACHE-LOCAL-LIST-NODEVICE-1">
-<link rel="apple-touch-icon" href="clock_icon_192.png?v=20260612-NOCACHE-LOCAL-LIST-NODEVICE-1">
-<meta name="clock-engine-version" content="20260612-NOCACHE-LOCAL-LIST-NODEVICE-1">
+<link rel="manifest" href="clock_manifest.json?v=20260612-BUILD-38-OPEN-FIX">
+<link rel="apple-touch-icon" href="clock_icon_192.png?v=20260612-BUILD-38-OPEN-FIX">
+<meta name="clock-engine-version" content="20260612-BUILD-38-OPEN-FIX">
 </head>
 <body>
 
@@ -140,6 +142,7 @@ small{display:block;color:var(--muted);margin-top:4px;line-height:1.35}
 <button id="exitBtn" type="button" aria-label="Выход">✕</button>
 <button id="fullscreenBtn" type="button" aria-label="Полный экран">⛶</button>
 <div id="exitHint" role="status" aria-live="polite"></div>
+<div id="buildMarker" class="build-marker">BUILD 38<br>20260612-BUILD-38-OPEN-FIX</div>
 
 <div id="installPromptPanel" class="install-prompt-panel" aria-live="polite">
   <div class="install-prompt-title">Стартовая модель сохранена</div>
@@ -395,8 +398,8 @@ window.addEventListener("unhandledrejection",function(event){
   showClockEmergencyError(event.reason || "Unhandled promise rejection");
 });
 
-// CLOCK_ENGINE_VERSION: 20260612-NOCACHE-LOCAL-LIST-NODEVICE-1
-const CLOCK_CACHE_BUST_VERSION="20260612-NOCACHE-LOCAL-LIST-NODEVICE-1";
+// CLOCK_ENGINE_VERSION: 20260612-BUILD-38-OPEN-FIX
+const CLOCK_CACHE_BUST_VERSION="20260612-BUILD-38-OPEN-FIX";
 
 const canvas=document.getElementById("clock");
 const ctx=canvas.getContext("2d");
@@ -1934,8 +1937,44 @@ function showModelStatus(message,buttonId){
   }
 }
 
-async function loadModelFromGitHubById(modelId,sourceLabel,makeAutostart=false){
+
+function findExistingLocalModelNameForClock(indexTitle,modelId,normalizedId){
+  const models=loadModels();
+  const names=Object.keys(models).filter(isLocalModelName);
+  const candidates=[
+    indexTitle,
+    modelId,
+    normalizedId,
+    normalizeModelId(indexTitle || modelId || normalizedId)
+  ]
+    .filter(Boolean)
+    .map(makeLocalModelName);
+
+  for(const candidate of candidates){
+    const exact=names.find(n=>n===candidate);
+    if(exact)return exact;
+    const lower=names.find(n=>n.toLowerCase()===candidate.toLowerCase());
+    if(lower)return lower;
+  }
+
+  return "";
+}
+
+async function loadModelFromGitHubById(modelId,sourceLabel,makeAutostart=false,indexTitle=""){
   const normalizedId=normalizeModelId(modelId);
+
+  if(makeAutostart){
+    const existingLocalName=findExistingLocalModelNameForClock(indexTitle,modelId,normalizedId);
+    if(existingLocalName){
+      const loaded=loadLocalModelByName(existingLocalName,true);
+      if(loaded){
+        modelStatus.textContent="Найдена существующая локальная модель. Стартовой назначена: "+existingLocalName;
+        if(modelPickerStatus)modelPickerStatus.textContent="Используется уже сохранённая локальная модель: "+existingLocalName;
+        return true;
+      }
+    }
+  }
+
   const modelUrl="models/"+normalizedId+".json?v="+Date.now()+"_"+Math.random().toString(36).slice(2);
 
   try{
@@ -1945,7 +1984,7 @@ async function loadModelFromGitHubById(modelId,sourceLabel,makeAutostart=false){
     const response=await fetch(modelUrl,{cache:"no-store"});
 
     if(!response.ok){
-      const msg="Не удалось загрузить модель: "+modelUrl;
+      const msg="Не удалось загрузить модель: "+modelUrl+" ("+response.status+")";
       modelStatus.textContent=msg;
       if(modelPickerStatus)modelPickerStatus.textContent=msg;
       console.log("Model fetch failed:",response.status,response.statusText,modelUrl);
@@ -1965,17 +2004,19 @@ async function loadModelFromGitHubById(modelId,sourceLabel,makeAutostart=false){
 
     applySettings(settings);
     currentGitHubModelId=normalizedId;
-    modelNameInput.value=data.name || data.title || data.id || normalizedId;
-    const displayName=data.name || data.title || normalizedId;
-    const localName=saveCurrentSettingsAsLocalModel(displayName);
+
+    const displayName=data.name || data.title || indexTitle || data.id || normalizedId;
+    modelNameInput.value=displayName;
 
     if(makeAutostart){
+      const localName=saveCurrentSettingsAsLocalModel(displayName);
       setAutostartLocalModel(localName);
+      modelStatus.textContent="GitHub-модель загружена, сохранена как локальная и назначена стартовой: "+localName;
+      if(modelPickerStatus)modelPickerStatus.textContent="Стартовая локальная модель создана: "+localName;
+    }else{
+      modelStatus.textContent="GitHub-модель открыта: "+displayName;
+      if(modelPickerStatus)modelPickerStatus.textContent="Модель открыта: "+displayName;
     }
-
-    modelStatus.textContent=localOverride
-      ? "Модель загружена из GitHub, применена локальная настройка устройства и сохранена как локальная: "+localName
-      : "Модель загружена из GitHub и сохранена как локальная: "+localName;
 
     try{
       localStorage.setItem("clock_last_github_model",normalizedId);
@@ -1984,7 +2025,7 @@ async function loadModelFromGitHubById(modelId,sourceLabel,makeAutostart=false){
     if(modelPicker)modelPicker.classList.remove("active");
     return true;
   }catch(e){
-    const msg="Ошибка загрузки модели из GitHub: "+normalizedId;
+    const msg="Ошибка загрузки модели из GitHub: "+normalizedId+". Подробности: "+(e && e.message ? e.message : e);
     modelStatus.textContent=msg;
     if(modelPickerStatus)modelPickerStatus.textContent=msg;
     console.log("Ошибка загрузки модели:",e);
@@ -2271,10 +2312,10 @@ async function showModelPickerFromIndex(){
         item.title,
         item.description || "GitHub-модель",
         async ()=>{
-          await loadModelFromGitHubById(item.id,"picker",false);
+          await loadModelFromGitHubById(item.id,"picker",false,item.title);
         },
         async ()=>{
-          await loadModelFromGitHubById(item.id,"picker",true);
+          await loadModelFromGitHubById(item.id,"picker",true,item.title);
         }
       ));
     });
