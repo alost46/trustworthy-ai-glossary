@@ -2095,7 +2095,7 @@ async function loadModelFromGitHubById(modelId,sourceLabel,makeAutostart=false){
   }
 }
 
-function loadModelFromGitHubQuery(){
+async function loadModelFromGitHubQuery(){
   const params=new URLSearchParams(location.search);
   const modelParam=params.get("model");
   if(!modelParam)return false;
