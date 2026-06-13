@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Clock">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>Clock Viewer - SAFE-BASE-01</title>
+<title>Clock Viewer - SAFE-BASE-01 - CACHE-TEST-20260613-01</title>
 <style>
 :root{--bg:#0f172a;--text:#1f2937;--muted:#64748b}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -118,6 +118,8 @@ small{display:block;color:var(--muted);margin-top:4px;line-height:1.35}
 }
 
 .build-badge{position:fixed;right:8px;bottom:8px;z-index:999998;background:rgba(255,255,255,.88);color:#0f172a;border:1px solid #cbd5e1;border-radius:8px;padding:4px 7px;font:11px/1.25 Arial,sans-serif;box-shadow:0 4px 14px rgba(0,0,0,.25);pointer-events:none}
+
+.cache-test-badge{position:fixed;left:8px;bottom:8px;z-index:999998;background:rgba(255,255,255,.92);color:#111827;border:1px solid #cbd5e1;border-radius:8px;padding:4px 7px;font:11px/1.25 Arial,sans-serif;box-shadow:0 4px 14px rgba(0,0,0,.25);pointer-events:none;white-space:pre-line}
 </style>
 
 <meta name="theme-color" content="#0f172a">
@@ -128,9 +130,12 @@ small{display:block;color:var(--muted);margin-top:4px;line-height:1.35}
 <link rel="manifest" href="clock_manifest.json?v=SAFE-BASE-01">
 <link rel="apple-touch-icon" href="clock_icon_192.png?v=SAFE-BASE-01">
 <meta name="clock-engine-version" content="SAFE-BASE-01">
+<meta name="clock-cache-test-stamp" content="CACHE-TEST-20260613-01">
 </head>
 <body>
 <div id="clockBuildBadge" class="build-badge">BUILD SAFE-BASE-01</div>
+<div id="clockCacheTestBadge" class="cache-test-badge">CACHE TEST
+20260613-01</div>
 
 
 <div class="clock-screen">
@@ -1836,6 +1841,16 @@ function drawDigitalTime(hours,minutes,R,font,symbolFill){if(!SETTINGS.showDigit
 function draw(){resizeCanvasToScreen();const t=getTimeParts();const dir=SETTINGS.reverse?-1:1;const s=t.seconds+t.milliseconds/1000;const m=t.minutes+s/60;const h=(t.hours%12)+m/60;const W=canvas.width;const H=canvas.height;const cX=W/2;const cY=H/2;const geom=calculateDialGeometry(W,H);const Rx=geom.Rx;const Ry=geom.Ry;const R=geom.R;const radiusPercent=Number(SETTINGS.radiusPercent||70);const srX=Rx*(radiusPercent/100);const srY=Ry*(radiusPercent/100);ctx.fillStyle=SETTINGS.screenBgColor||"#0f172a";ctx.fillRect(0,0,W,H);ctx.save();ctx.translate(cX,cY);ctx.beginPath();ctx.ellipse(0,0,Rx,Ry,0,0,Math.PI*2);ctx.fillStyle=SETTINGS.faceColor||"#111111";ctx.fill();ctx.strokeStyle=SETTINGS.accentColor||"#00ffcc";ctx.lineWidth=R*.04;ctx.stroke();for(let i=0;i<60;i++){const a=i*Math.PI/30;const outerX=Math.sin(a)*Rx*.92;const outerY=-Math.cos(a)*Ry*.92;const innerX=Math.sin(a)*Rx*(i%5===0?.80:.86);const innerY=-Math.cos(a)*Ry*(i%5===0?.80:.86);ctx.beginPath();ctx.moveTo(outerX,outerY);ctx.lineTo(innerX,innerY);ctx.lineWidth=i%5===0?R*.018:R*.008;ctx.strokeStyle=i%5===0?(SETTINGS.accentColor||"#00ffcc"):"#64748b";ctx.stroke();}const font=SETTINGS.font||"Arial";const symbolSize=Number(SETTINGS.symbolSize||40);const symbolsText=SETTINGS.symbolsText||"1 2 3 4 5 6 7 8 9 10 11 12";const symbols=symbolsText.trim().split(/\\s+/).filter(Boolean);const symbolFill=applyGrayToColor(SETTINGS.symbolColor||"#ffffff",SETTINGS.symbolGray??100);ctx.font="bold "+symbolSize+"px "+JSON.stringify(font)+", Arial, sans-serif";ctx.textAlign="center";ctx.textBaseline="middle";ctx.fillStyle=symbolFill;drawClockSymbols(ctx,srX,srY,symbols,symbolFill,font,symbolSize);if(SETTINGS.showDigitalClock!==false){drawDigitalTime(t.hours,t.minutes,R,font,symbolFill);}drawHand(dir*h*Math.PI/6,R*.5,R*.035,SETTINGS.hourHandColor||"#00ffcc");drawHand(dir*m*Math.PI/30,R*.7,R*.024,SETTINGS.minuteHandColor||"#00ffcc");if(SETTINGS.showSecondHand){drawHand(dir*s*Math.PI/30,R*.8,R*.010,SETTINGS.secondHandColor||"#ff0000");}ctx.beginPath();ctx.arc(0,0,R*.035,0,Math.PI*2);ctx.fillStyle="white";ctx.fill();ctx.restore();requestAnimationFrame(draw);}
 draw();
 <\/script>
+
+<script>
+(function(){
+  var el=document.getElementById("clockCacheTestBadge");
+  if(!el)return;
+  var q=window.location.search || "без ?v";
+  var t=new Date();
+  el.textContent="CACHE TEST\n20260613-01\n"+q+"\n"+t.toLocaleTimeString();
+})();
+</script>
 </body>
 </html>`;
 }
