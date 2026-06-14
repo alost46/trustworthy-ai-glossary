@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Clock">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>Clock Viewer - SAFE-BASE-01 - CACHE-TEST-20260613-01</title>
+<title>Clock Viewer - SAFE-BASE-01-CACHE-FIX2</title>
 <style>
 :root{--bg:#0f172a;--text:#1f2937;--muted:#64748b}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -127,15 +127,15 @@ small{display:block;color:var(--muted);margin-top:4px;line-height:1.35}
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Clock Viewer">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<link rel="manifest" href="clock_manifest.json?v=SAFE-BASE-01">
-<link rel="apple-touch-icon" href="clock_icon_192.png?v=SAFE-BASE-01">
-<meta name="clock-engine-version" content="SAFE-BASE-01">
-<meta name="clock-cache-test-stamp" content="CACHE-TEST-20260613-01">
+<link rel="manifest" href="clock_manifest.json?v=SAFE-BASE-01-CACHE-FIX2">
+<link rel="apple-touch-icon" href="clock_icon_192.png?v=SAFE-BASE-01-CACHE-FIX2">
+<meta name="clock-engine-version" content="SAFE-BASE-01-CACHE-FIX2">
+<meta name="clock-cache-test-stamp" content="CACHE-FIX2-20260614-01">
 </head>
 <body>
-<div id="clockBuildBadge" class="build-badge">BUILD SAFE-BASE-01</div>
-<div id="clockCacheTestBadge" class="cache-test-badge">CACHE TEST
-20260613-01</div>
+<div id="clockBuildBadge" class="build-badge">BUILD SAFE-BASE-01-CACHE-FIX2</div>
+<div id="clockCacheTestBadge" class="cache-test-badge">CACHE FIX2
+20260614-01</div>
 
 
 <div class="clock-screen">
@@ -392,7 +392,7 @@ small{display:block;color:var(--muted);margin-top:4px;line-height:1.35}
 </div>
 
 <script>
-const CLOCK_CACHE_BUST_VERSION="SAFE-BASE-01";
+const CLOCK_CACHE_BUST_VERSION="SAFE-BASE-01-CACHE-FIX2";
 
 
 function showClockEmergencyError(error){
@@ -412,7 +412,7 @@ window.addEventListener("unhandledrejection",function(event){
   showClockEmergencyError(event.reason || "Unhandled promise rejection");
 });
 
-// CLOCK_ENGINE_VERSION: SAFE-BASE-01
+// CLOCK_ENGINE_VERSION: SAFE-BASE-01-CACHE-FIX2
 
 const canvas=document.getElementById("clock");
 const ctx=canvas.getContext("2d");
@@ -1842,15 +1842,6 @@ function draw(){resizeCanvasToScreen();const t=getTimeParts();const dir=SETTINGS
 draw();
 <\/script>
 
-<script>
-(function(){
-  var el=document.getElementById("clockCacheTestBadge");
-  if(!el)return;
-  var q=window.location.search || "без ?v";
-  var t=new Date();
-  el.textContent="CACHE TEST\n20260613-01\n"+q+"\n"+t.toLocaleTimeString();
-})();
-</script>
 </body>
 </html>`;
 }
@@ -2618,5 +2609,15 @@ initClockApp().catch(error=>{
   try{draw();}catch(e){console.log("Fallback draw error:",e);}
 });
 </script>
+<script>
+(function(){
+  var el=document.getElementById("clockCacheTestBadge");
+  if(!el)return;
+  var q=window.location.search || "без ?v";
+  var t=new Date();
+  el.textContent="CACHE FIX2\n20260614-01\n"+q+"\n"+t.toLocaleTimeString();
+})();
+</script>
+
 </body>
 </html>
