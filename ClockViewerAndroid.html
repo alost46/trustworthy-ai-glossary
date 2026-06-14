@@ -127,15 +127,15 @@ small{display:block;color:var(--muted);margin-top:4px;line-height:1.35}
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Clock Viewer">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<link rel="manifest" href="clock_manifest.json?v=SAFE-BASE-03-LLOCAL-CACHE-FIX2">
-<link rel="apple-touch-icon" href="clock_icon_192.png?v=SAFE-BASE-03-LLOCAL-CACHE-FIX2">
-<meta name="clock-engine-version" content="SAFE-BASE-01-CACHE-FIX2">
+<link rel="manifest" href="clock_manifest.json?v=SAFE-BASE-03-LLOCAL-MENUFIX">
+<link rel="apple-touch-icon" href="clock_icon_192.png?v=SAFE-BASE-03-LLOCAL-MENUFIX">
+<meta name="clock-engine-version" content="SAFE-BASE-03-LLOCAL-MENUFIX">
 <meta name="clock-cache-test-stamp" content="CACHE-FIX2-20260614-01">
 </head>
 <body>
-<div id="clockBuildBadge" class="build-badge">BUILD SAFE-BASE-03-LLOCAL-CACHE-FIX2</div>
-<div id="clockCacheTestBadge" class="cache-test-badge">LLOCAL TEST
-20260614-01</div>
+<div id="clockBuildBadge" class="build-badge">BUILD SAFE-BASE-03-LLOCAL-MENUFIX</div>
+<div id="clockCacheTestBadge" class="cache-test-badge">LLOCAL MENUFIX
+20260614-02</div>
 
 
 <div class="clock-screen">
@@ -392,7 +392,7 @@ small{display:block;color:var(--muted);margin-top:4px;line-height:1.35}
 </div>
 
 <script>
-const CLOCK_CACHE_BUST_VERSION="SAFE-BASE-01-CACHE-FIX2";
+const CLOCK_CACHE_BUST_VERSION="SAFE-BASE-03-LLOCAL-MENUFIX";
 
 
 function showClockEmergencyError(error){
@@ -412,7 +412,7 @@ window.addEventListener("unhandledrejection",function(event){
   showClockEmergencyError(event.reason || "Unhandled promise rejection");
 });
 
-// CLOCK_ENGINE_VERSION: SAFE-BASE-03-LLOCAL-CACHE-FIX2
+// CLOCK_ENGINE_VERSION: SAFE-BASE-03-LLOCAL-MENUFIX
 
 const canvas=document.getElementById("clock");
 const ctx=canvas.getContext("2d");
@@ -2634,10 +2634,11 @@ async function initClockApp(){
       if(!loadedFromLocal){
         const loadedFromQuery=await loadModelFromGitHubQuery();
         if(!loadedFromQuery){
-          const loadedFromAutostart=loadAutostartLocalModel();
-          if(!loadedFromAutostart){
-            await showModelPickerFromIndex();
-          }
+          /* MENUFIX:
+             Обычное открытие GitHub-страницы должно показывать главный экран.
+             Автостарт локальной модели разрешён только при явном ?mode=local
+             или другой явной команде запуска, но не при простом открытии HTML. */
+          await showModelPickerFromIndex();
         }
       }
     }
@@ -2658,7 +2659,7 @@ initClockApp().catch(error=>{
   if(!el)return;
   var q=window.location.search || "без ?v";
   var t=new Date();
-  el.textContent="LLOCAL TEST\n20260614-01\n"+q+"\n"+t.toLocaleTimeString();
+  el.textContent="LLOCAL MENUFIX\n20260614-02\n"+q+"\n"+t.toLocaleTimeString();
 })();
 </script>
 
