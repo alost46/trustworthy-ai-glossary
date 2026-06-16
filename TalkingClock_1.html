@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<meta name="theme-color" content="#0f172a">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Talking Clock">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Talking Clock 1.4b</title>
+<style>
+:root{
+  --bg:#0f172a; --fg:#f8fafc; --muted:#94a3b8; --panel:#fff; --text:#111827; --clock-scale:1;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;width:100%;height:100%;background:var(--bg);color:var(--fg);font-family:Arial,sans-serif;overflow:hidden;user-select:none;-webkit-user-select:none;touch-action:manipulation}
+#app{width:100vw;height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:clamp(8px,2vh,18px);padding:clamp(6px,2vw,20px)}
+#clockFace{width:min(98vw,calc(780px * var(--clock-scale)));height:min(82vh,calc(340px * var(--clock-scale)));min-height:180px;border:2px solid rgba(255,255,255,.18);border-radius:32px;display:flex;flex-direction:column;align-items:center;justify-content:center;box-shadow:0 18px 60px rgba(0,0,0,.35);background:radial-gradient(circle at top,rgba(56,189,248,.16),rgba(15,23,42,.94));cursor:pointer;padding:clamp(8px,2vw,20px)}
+#time{font-size:min(40vw,calc(190px * var(--clock-scale)));line-height:.95;font-weight:800;letter-spacing:.03em;white-space:nowrap}
+#date{margin-top:12px;font-size:min(8vw,calc(36px * var(--clock-scale)));color:var(--muted);text-align:center;max-width:94vw}
+#hint{color:var(--muted);font-size:15px;text-align:center;line-height:1.45}
+#settingsButton,#fullscreenButton{position:fixed;bottom:16px;width:58px;height:58px;border:none;border-radius:50%;background:#fff;color:#111827;font-size:28px;box-shadow:0 10px 30px rgba(0,0,0,.35);cursor:pointer}
+#settingsButton{right:16px}
+#fullscreenButton{left:16px}
+#panelOverlay{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.72);padding:14px;z-index:50}
+#panelOverlay.active{display:flex}
+#panel{width:min(520px,96vw);max-height:90vh;overflow:auto;background:var(--panel);color:var(--text);border-radius:20px;padding:20px;box-shadow:0 20px 70px rgba(0,0,0,.45)}
+#panel h2{margin:0 0 14px;font-size:24px}
+.control{margin:16px 0}
+label{display:block;font-weight:bold;margin-bottom:6px}
+select,input[type=range]{width:100%;padding:10px;font-size:16px}
+.scale-marks{display:flex;justify-content:space-between;color:#64748b;font-size:12px;margin-top:4px}
+.row{display:grid;grid-template-columns:1fr;gap:10px}
+button.action{width:100%;border:none;border-radius:12px;padding:12px;font-size:16px;font-weight:bold;cursor:pointer;background:#2563eb;color:white}
+button.secondary{background:#64748b}
+small{display:block;color:#64748b;line-height:1.35;margin-top:6px}
+#status{margin-top:10px;color:#475569;font-size:14px;min-height:20px}
+#installPanel,#voicesPanel{display:none;margin-top:10px;padding:10px;border:1px solid #cbd5e1;border-radius:10px;background:#f8fafc;color:#111827;font-size:14px;line-height:1.35}
+#installPanel.active,#voicesPanel.active{display:block}
+#voicesPanel{white-space:pre-wrap;max-height:190px;overflow:auto;font-size:13px}
+#buildBadge{position:fixed;right:8px;top:8px;z-index:999;background:rgba(255,255,255,.86);color:#0f172a;border:1px solid #cbd5e1;border-radius:8px;padding:4px 7px;font:11px/1.25 Arial,sans-serif;pointer-events:none}
+</style>
+</head>
+<body>
+<div id="buildBadge">BUILD TALKING-CLOCK-1.4b</div>
+
+<div id="app">
+  <div id="clockFace" aria-label="Говорящие часы">
+    <div id="time">--:--</div>
+    <div id="date">---</div>
+  </div>
+  <div id="hint">Короткое нажатие: сказать время.<br>Долгое нажатие: сказать дату.</div>
+</div>
+
+<button id="fullscreenButton" type="button" aria-label="Full screen">⛶</button>
+<button id="settingsButton" type="button" aria-label="Конструктор">⚙️</button>
+
+<div id="panelOverlay">
+  <div id="panel">
+    <h2 id="panelTitle">⚙️ Конструктор говорящих часов</h2>
+
+    <div class="control">
+      <label id="languageLabel" for="languageSelect">Язык озвучивания</label>
+      <select id="languageSelect">
+        <option value="ru-RU">Русский</option>
+        <option value="en-US">English</option>
+        <option value="he-IL">עברית</option>
+      </select>
+      <small id="languageNote">Используется встроенный голос браузера/телефона. Если нужного голоса нет, устройство может заменить его ближайшим доступным.</small>
+    </div>
+
+    <div class="control">
+      <label id="sizeLabel" for="sizeRange">Размер циферблата: <span id="sizeValue">100%</span></label>
+      <input type="range" id="sizeRange" min="50" max="200" step="5" value="100">
+      <div class="scale-marks"><span>50%</span><span>100%</span><span>150%</span><span>200%</span></div>
+      <small id="sizeNote">На 200% часы занимают почти весь экран.</small>
+    </div>
+
+    <div class="control">
+      <label id="rateLabel" for="rateRange">Скорость речи: <span id="rateValue">1.0</span></label>
+      <input type="range" id="rateRange" min="0.6" max="1.4" step="0.1" value="1.0">
+    </div>
+
+    <div class="row">
+      <button class="action" id="testVoice" type="button">Проверить голос</button>
+      <button class="action secondary" id="createIconButton" type="button">Create icon</button>
+      <button class="action secondary" id="showVoicesButton" type="button">Показать языки</button>
+      <button class="action secondary" id="closePanel" type="button">Готово</button>
+      <div id="installPanel"></div>
+      <div id="voicesPanel"></div>
+    </div>
+
+    <div id="status"></div>
+  </div>
+</div>
+
+<script>
+const BUILD_ID="TALKING-CLOCK-1.4b";
+const SETTINGS_KEY="talking_clock_1_4b_settings";
+
+const clockFace=document.getElementById("clockFace");
+const timeBox=document.getElementById("time");
+const dateBox=document.getElementById("date");
+const hintBox=document.getElementById("hint");
+const panelOverlay=document.getElementById("panelOverlay");
+const settingsButton=document.getElementById("settingsButton");
+const fullscreenButton=document.getElementById("fullscreenButton");
+const closePanel=document.getElementById("closePanel");
+const languageSelect=document.getElementById("languageSelect");
+const rateRange=document.getElementById("rateRange");
+const rateValue=document.getElementById("rateValue");
+const sizeRange=document.getElementById("sizeRange");
+const sizeValue=document.getElementById("sizeValue");
+const statusBox=document.getElementById("status");
+const testVoice=document.getElementById("testVoice");
+const createIconButton=document.getElementById("createIconButton");
+const showVoicesButton=document.getElementById("showVoicesButton");
+const installPanel=document.getElementById("installPanel");
+const voicesPanel=document.getElementById("voicesPanel");
+
+let longPressTimer=null;
+let longPressFired=false;
+let deferredInstallPrompt=null;
+
+const uiText={
+  "ru-RU":{
+    panelTitle:"⚙️ Конструктор говорящих часов",
+    languageLabel:"Язык озвучивания",
+    languageNote:"Используется встроенный голос браузера/телефона. Если нужного голоса нет, устройство может заменить его ближайшим доступным.",
+    sizeLabel:"Размер циферблата:",
+    sizeNote:"На 200% часы занимают почти весь экран.",
+    rateLabel:"Скорость речи:",
+    testVoice:"Проверить голос",
+    createIcon:"Создать иконку",
+    showVoices:"Показать языки",
+    close:"Готово",
+    hint:"Короткое нажатие: сказать время.<br>Долгое нажатие: сказать дату.",
+    saved:"Язык сохранён:",
+    noSpeech:"На этом устройстве speechSynthesis недоступен.",
+    ready:"Говорящие часы готовы.",
+    installOpened:"Открываю системное окно установки...",
+    installed:"Иконка часов создана на экране устройства.",
+    installResult:"Результат:",
+    settingsSaved:"Настройки сохранены на этом устройстве.",
+    androidManual:"Если системное окно не появилось: откройте меню браузера ⋮ → Добавить на главный экран / Установить приложение. Язык, размер и скорость уже сохранены.",
+    iosManual:"На iPhone: нажмите Поделиться → На экран «Домой». Язык, размер и скорость уже сохранены.",
+    installFail:"Системное окно не открылось. Используйте меню браузера ⋮ → Добавить на главный экран.",
+    voicesTitle:"Доступные языки устройства:",
+    voiceFound:"голос найден",
+    voiceUnknown:"голос пока не определён",
+    selected:"выбран",
+    voicesUnavailable:"Список голосов пока недоступен. Нажмите «Проверить голос», затем попробуйте снова.",
+    fullscreenFail:"Полноэкранный режим недоступен в этом браузере."
+  },
+  "en-US":{
+    panelTitle:"⚙️ Talking Clock Builder",
+    languageLabel:"Spoken language",
+    languageNote:"Uses the built-in browser/phone voice. If this voice is missing, the device may use the closest available one.",
+    sizeLabel:"Clock face size:",
+    sizeNote:"At 200%, the clock uses almost the full screen.",
+    rateLabel:"Speech speed:",
+    testVoice:"Test voice",
+    createIcon:"Create icon",
+    showVoices:"Show languages",
+    close:"Done",
+    hint:"Short tap: say the time.<br>Long press: say the date.",
+    saved:"Language saved:",
+    noSpeech:"speechSynthesis is not available on this device.",
+    ready:"Talking clock is ready.",
+    installOpened:"Opening the system install window...",
+    installed:"The clock icon was created on this device.",
+    installResult:"Result:",
+    settingsSaved:"Settings are saved on this device.",
+    androidManual:"If the system window did not appear: browser menu ⋮ → Add to Home screen / Install app. Language, size, and speed are already saved.",
+    iosManual:"On iPhone: tap Share → Add to Home Screen. Language, size, and speed are already saved.",
+    installFail:"The system window did not open. Use browser menu ⋮ → Add to Home screen.",
+    voicesTitle:"Available device languages:",
+    voiceFound:"voice found",
+    voiceUnknown:"voice not detected yet",
+    selected:"selected",
+    voicesUnavailable:"The voice list is not available yet. Tap “Test voice”, then try again.",
+    fullscreenFail:"Fullscreen is not available in this browser."
+  },
+  "he-IL":{
+    panelTitle:"⚙️ בונה השעון המדבר",
+    languageLabel:"שפת הדיבור",
+    languageNote:"השעון משתמש בקול המובנה של הדפדפן או הטלפון. אם הקול אינו קיים, המכשיר עשוי לבחור קול קרוב.",
+    sizeLabel:"גודל לוח השעון:",
+    sizeNote:"ב־200% השעון כמעט ממלא את כל המסך.",
+    rateLabel:"מהירות הדיבור:",
+    testVoice:"בדיקת קול",
+    createIcon:"יצירת סמל",
+    showVoices:"הצגת שפות",
+    close:"סיום",
+    hint:"לחיצה קצרה: אמירת השעה.<br>לחיצה ארוכה: אמירת התאריך.",
+    saved:"השפה נשמרה:",
+    noSpeech:"speechSynthesis אינו זמין במכשיר הזה.",
+    ready:"השעון המדבר מוכן.",
+    installOpened:"פותח את חלון ההתקנה של המערכת...",
+    installed:"סמל השעון נוצר במסך המכשיר.",
+    installResult:"תוצאה:",
+    settingsSaved:"ההגדרות נשמרו במכשיר הזה.",
+    androidManual:"אם חלון המערכת לא הופיע: תפריט הדפדפן ⋮ → הוספה למסך הבית / התקנת אפליקציה. השפה, הגודל והמהירות כבר נשמרו.",
+    iosManual:"באייפון: לחצו על שיתוף → הוספה למסך הבית. השפה, הגודל והמהירות כבר נשמרו.",
+    installFail:"חלון המערכת לא נפתח. השתמשו בתפריט הדפדפן ⋮ → הוספה למסך הבית.",
+    voicesTitle:"שפות זמינות במכשיר:",
+    voiceFound:"קול נמצא",
+    voiceUnknown:"הקול עדיין לא זוהה",
+    selected:"נבחר",
+    voicesUnavailable:"רשימת הקולות עדיין אינה זמינה. לחצו על בדיקת קול ואז נסו שוב.",
+    fullscreenFail:"מצב מסך מלא אינו זמין בדפדפן הזה."
+  }
+};
+
+function getLang(){return languageSelect.value||"ru-RU";}
+function ui(key){const lang=getLang();return (uiText[lang]&&uiText[lang][key])||uiText["ru-RU"][key]||key;}
+
+function loadSettings(){
+  try{
+    const raw=localStorage.getItem(SETTINGS_KEY);
+    if(!raw)return;
+    const s=JSON.parse(raw);
+    if(s.lang)languageSelect.value=s.lang;
+    if(s.rate){rateRange.value=s.rate;rateValue.textContent=Number(s.rate).toFixed(1);}
+    if(s.size){sizeRange.value=s.size;sizeValue.textContent=Number(s.size)+"%";applyClockSize(s.size);}
+  }catch(e){}
+}
+
+function saveSettings(){
+  localStorage.setItem(SETTINGS_KEY,JSON.stringify({
+    lang:languageSelect.value,
+    rate:Number(rateRange.value),
+    size:Number(sizeRange.value)
+  }));
+}
+
+function applyClockSize(size){
+  const scale=(Number(size)||100)/100;
+  document.documentElement.style.setProperty("--clock-scale",String(scale));
+}
+
+function applyUiLanguage(){
+  const lang=getLang();
+  document.documentElement.lang=lang.slice(0,2);
+  document.documentElement.dir=lang==="he-IL" ? "rtl" : "ltr";
+
+  document.getElementById("panelTitle").textContent=ui("panelTitle");
+  document.getElementById("languageLabel").textContent=ui("languageLabel");
+  document.getElementById("languageNote").textContent=ui("languageNote");
+  document.getElementById("sizeLabel").firstChild.textContent=ui("sizeLabel")+" ";
+  document.getElementById("sizeNote").textContent=ui("sizeNote");
+  document.getElementById("rateLabel").firstChild.textContent=ui("rateLabel")+" ";
+  testVoice.textContent=ui("testVoice");
+  createIconButton.textContent=ui("createIcon");
+  showVoicesButton.textContent=ui("showVoices");
+  closePanel.textContent=ui("close");
+  hintBox.innerHTML=ui("hint");
+
+  if(voicesPanel.classList.contains("active")) voicesPanel.textContent=summarizeDeviceLanguages();
+}
+
+function formatTimeForScreen(date){
+  return new Intl.DateTimeFormat(getLang(),{hour:"2-digit",minute:"2-digit",hour12:false}).format(date);
+}
+
+function formatDateForScreen(date){
+  return new Intl.DateTimeFormat(getLang(),{weekday:"long",day:"numeric",month:"long",year:"numeric"}).format(date);
+}
+
+function updateClock(){
+  const now=new Date();
+  timeBox.textContent=formatTimeForScreen(now);
+  dateBox.textContent=formatDateForScreen(now);
+}
+
+function getTimeSpeech(date,lang){
+  if(lang==="en-US")return "The time is "+new Intl.DateTimeFormat("en-US",{hour:"numeric",minute:"2-digit"}).format(date);
+  if(lang==="he-IL")return "השעה "+new Intl.DateTimeFormat("he-IL",{hour:"numeric",minute:"2-digit"}).format(date);
+  return "Сейчас "+new Intl.DateTimeFormat("ru-RU",{hour:"numeric",minute:"2-digit"}).format(date);
+}
+
+function getDateSpeech(date,lang){
+  if(lang==="en-US")return "Today is "+new Intl.DateTimeFormat("en-US",{weekday:"long",day:"numeric",month:"long",year:"numeric"}).format(date);
+  if(lang==="he-IL")return "היום "+new Intl.DateTimeFormat("he-IL",{weekday:"long",day:"numeric",month:"long",year:"numeric"}).format(date);
+  return "Сегодня "+new Intl.DateTimeFormat("ru-RU",{weekday:"long",day:"numeric",month:"long",year:"numeric"}).format(date);
+}
+
+function chooseVoice(lang){
+  const voices=window.speechSynthesis?speechSynthesis.getVoices():[];
+  return voices.find(v=>v.lang===lang)||
+         voices.find(v=>v.lang&&v.lang.toLowerCase().startsWith(lang.slice(0,2).toLowerCase()))||
+         null;
+}
+
+function speak(messageText){
+  if(!("speechSynthesis" in window)){
+    statusBox.textContent=ui("noSpeech");
+    return;
+  }
+  speechSynthesis.cancel();
+  setTimeout(()=>{
+    const lang=getLang();
+    const u=new SpeechSynthesisUtterance(messageText);
+    u.lang=lang;
+    u.rate=Number(rateRange.value)||1;
+    const voice=chooseVoice(lang);
+    if(voice)u.voice=voice;
+    speechSynthesis.speak(u);
+  },120);
+}
+
+function speakTime(){speak(getTimeSpeech(new Date(),getLang()));}
+function speakDate(){speak(getDateSpeech(new Date(),getLang()));}
+
+function startPress(e){
+  e.preventDefault();
+  longPressFired=false;
+  clearTimeout(longPressTimer);
+  longPressTimer=setTimeout(()=>{longPressFired=true;speakDate();},750);
+}
+function endPress(e){
+  e.preventDefault();
+  clearTimeout(longPressTimer);
+  if(!longPressFired)speakTime();
+}
+
+clockFace.addEventListener("pointerdown",startPress);
+clockFace.addEventListener("pointerup",endPress);
+clockFace.addEventListener("pointercancel",()=>clearTimeout(longPressTimer));
+clockFace.addEventListener("pointerleave",()=>clearTimeout(longPressTimer));
+
+window.addEventListener("beforeinstallprompt",event=>{
+  event.preventDefault();
+  deferredInstallPrompt=event;
+});
+
+window.addEventListener("appinstalled",()=>{
+  deferredInstallPrompt=null;
+  installPanel.classList.add("active");
+  installPanel.textContent=ui("installed");
+});
+
+async function createHomeScreenButton(){
+  saveSettings();
+  installPanel.classList.add("active");
+
+  if(deferredInstallPrompt){
+    const promptEvent=deferredInstallPrompt;
+    deferredInstallPrompt=null;
+    try{
+      installPanel.textContent=ui("installOpened");
+      promptEvent.prompt();
+      const choice=await promptEvent.userChoice;
+      installPanel.textContent=ui("installResult")+" "+(choice&&choice.outcome?choice.outcome:"OK")+". "+ui("settingsSaved");
+    }catch(e){
+      installPanel.textContent=ui("installFail");
+    }
+    return;
+  }
+
+  const isIOS=/iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform==="MacIntel" && navigator.maxTouchPoints>1);
+  installPanel.textContent=isIOS ? ui("iosManual") : ui("androidManual");
+}
+
+async function toggleFullscreen(){
+  try{
+    if(document.fullscreenElement) await document.exitFullscreen();
+    else if(document.documentElement.requestFullscreen) await document.documentElement.requestFullscreen();
+    else statusBox.textContent=ui("fullscreenFail");
+  }catch(e){
+    statusBox.textContent=ui("fullscreenFail");
+  }
+}
+
+function summarizeDeviceLanguages(){
+  const appLanguages=[
+    {code:"ru-RU", short:"ru", label:"Русский / Russian"},
+    {code:"en-US", short:"en", label:"English"},
+    {code:"he-IL", short:"he", label:"עברית / Hebrew"}
+  ];
+  let voices=[];
+  if("speechSynthesis" in window) voices=speechSynthesis.getVoices()||[];
+
+  const byShort={};
+  voices.forEach(v=>{
+    const code=(v.lang||"").split("-")[0].toLowerCase();
+    if(!code)return;
+    byShort[code]=(byShort[code]||0)+1;
+  });
+
+  const selected=getLang().slice(0,2).toLowerCase();
+  const lines=[ui("voicesTitle")];
+
+  appLanguages.forEach(item=>{
+    const count=byShort[item.short]||0;
+    const status=count ? ui("voiceFound")+" ("+count+")" : ui("voiceUnknown");
+    lines.push((item.short===selected?"✓ ":"  ")+item.label+" — "+status+(item.short===selected?" — "+ui("selected"):""));
+  });
+
+  const known=new Set(appLanguages.map(x=>x.short));
+  const names={
+    fr:"Français / French", de:"Deutsch / German", es:"Español / Spanish", it:"Italiano / Italian",
+    ar:"العربية / Arabic", zh:"中文 / Chinese", ja:"日本語 / Japanese", ko:"한국어 / Korean",
+    pt:"Português / Portuguese", pl:"Polski / Polish", tr:"Türkçe / Turkish", nl:"Nederlands / Dutch"
+  };
+
+  Object.keys(byShort).sort().forEach(code=>{
+    if(known.has(code))return;
+    lines.push("  "+(names[code]||code)+" — "+ui("voiceFound")+" ("+byShort[code]+")");
+  });
+
+  if(!voices.length){
+    lines.push("");
+    lines.push(ui("voicesUnavailable"));
+  }
+
+  return lines.join("\n");
+}
+
+function showDeviceLanguages(){
+  voicesPanel.classList.toggle("active");
+  voicesPanel.textContent=summarizeDeviceLanguages();
+}
+
+settingsButton.onclick=()=>panelOverlay.classList.add("active");
+fullscreenButton.onclick=toggleFullscreen;
+closePanel.onclick=()=>panelOverlay.classList.remove("active");
+createIconButton.onclick=createHomeScreenButton;
+showVoicesButton.onclick=showDeviceLanguages;
+
+languageSelect.onchange=()=>{
+  saveSettings();
+  applyUiLanguage();
+  updateClock();
+  statusBox.textContent=ui("saved")+" "+languageSelect.options[languageSelect.selectedIndex].text;
+};
+
+rateRange.oninput=()=>{
+  rateValue.textContent=Number(rateRange.value).toFixed(1);
+  saveSettings();
+};
+
+sizeRange.oninput=()=>{
+  sizeValue.textContent=Number(sizeRange.value)+"%";
+  applyClockSize(sizeRange.value);
+  saveSettings();
+};
+
+testVoice.onclick=()=>speak(ui("ready"));
+
+if("speechSynthesis" in window){
+  speechSynthesis.onvoiceschanged=()=>{
+    if(voicesPanel.classList.contains("active")) voicesPanel.textContent=summarizeDeviceLanguages();
+  };
+}
+
+loadSettings();
+applyUiLanguage();
+updateClock();
+setInterval(updateClock,1000);
+</script>
+</body>
+</html>
