@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<meta name="theme-color" content="#0f172a">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Hebrew Clock">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Hebrew Talking Clock 1.1</title>
+<style>
+:root{--bg:#0f172a;--fg:#f8fafc;--muted:#94a3b8;--panel:#fff;--text:#111827;--clock-scale:1;--time-scale:1}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;width:100%;height:100%;background:var(--bg);color:var(--fg);font-family:Arial,"Noto Sans Hebrew",sans-serif;overflow:hidden;user-select:none;-webkit-user-select:none;touch-action:manipulation}
+#app{width:100vw;height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:clamp(8px,2vh,18px);padding:clamp(6px,2vw,20px)}
+#clockFace{width:min(98vw,calc(820px * var(--clock-scale)));height:min(78vh,calc(380px * var(--clock-scale)));min-height:210px;border:2px solid rgba(255,255,255,.18);border-radius:32px;display:flex;flex-direction:column;align-items:center;justify-content:center;box-shadow:0 18px 60px rgba(0,0,0,.35);background:radial-gradient(circle at top,rgba(56,189,248,.16),rgba(15,23,42,.94));cursor:pointer;padding:clamp(10px,2.5vw,24px);text-align:center;direction:rtl}
+#timeWords{font-size:min(11vw,calc(72px * var(--time-scale) * var(--clock-scale)));line-height:1.18;font-weight:800;letter-spacing:.01em;max-width:96%;overflow-wrap:anywhere}
+#dateHebrew{margin-top:16px;font-size:min(6.5vw,calc(34px * var(--time-scale) * var(--clock-scale)));color:var(--muted);line-height:1.2;max-width:96%}
+#hint{color:var(--muted);font-size:15px;text-align:center;line-height:1.45;direction:rtl}
+#voiceBadge,#buildBadge{position:fixed;top:8px;z-index:999;background:rgba(255,255,255,.86);color:#0f172a;border:1px solid #cbd5e1;border-radius:8px;padding:4px 7px;font:11px/1.25 Arial,sans-serif;pointer-events:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;direction:ltr}
+#voiceBadge{left:8px;max-width:68vw}#buildBadge{right:8px}
+#settingsButton,#fullscreenButton{position:fixed;bottom:16px;width:58px;height:58px;border:none;border-radius:50%;background:#fff;color:#111827;font-size:28px;box-shadow:0 10px 30px rgba(0,0,0,.35);cursor:pointer}
+#settingsButton{right:16px}#fullscreenButton{left:16px}
+#panelOverlay{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.72);padding:14px;z-index:50}
+#panelOverlay.active{display:flex}
+#panel{width:min(680px,96vw);max-height:90vh;overflow:auto;background:var(--panel);color:var(--text);border-radius:20px;padding:20px;box-shadow:0 20px 70px rgba(0,0,0,.45);user-select:text;-webkit-user-select:text;direction:rtl}
+#panel h2{margin:0 0 14px;font-size:24px}.control{margin:14px 0}label{display:block;font-weight:bold;margin-bottom:6px}select,input[type=range]{width:100%;padding:10px;font-size:16px}.scale-marks{display:flex;justify-content:space-between;color:#64748b;font-size:12px;margin-top:4px;direction:ltr}.row{display:grid;grid-template-columns:1fr;gap:10px}
+button.action{width:100%;border:none;border-radius:12px;padding:10px 12px;font-size:16px;font-weight:bold;cursor:pointer;background:#2563eb;color:white}button.secondary{background:#64748b}button.warn{background:#b45309}
+.btn-main{display:block;font-size:16px;line-height:1.15}.btn-en{display:block;font-size:12px;line-height:1.15;opacity:.82;font-weight:normal;margin-top:2px;direction:ltr}.bi-main{display:block}.bi-en{display:block;font-size:12px;line-height:1.2;color:#64748b;font-weight:normal;margin-top:2px;direction:ltr}.note-en{color:#64748b;direction:ltr}
+small{display:block;color:#64748b;line-height:1.35;margin-top:6px}#status{margin-top:10px;color:#475569;font-size:14px;min-height:20px;white-space:pre-wrap;direction:rtl}
+#installPanel,#diagPanel{display:none;margin-top:10px;padding:10px;border:1px solid #cbd5e1;border-radius:10px;background:#f8fafc;color:#111827;font-size:14px;line-height:1.35;user-select:text;-webkit-user-select:text}#installPanel.active,#diagPanel.active{display:block}.mono{font-family:Consolas,Menlo,monospace;white-space:pre-wrap;direction:ltr;text-align:left}
+</style>
+</head>
+<body>
+<div id="buildBadge">BUILD HEBREW-CLOCK-1.1</div>
+<div id="voiceBadge">voice: auto</div>
+<div id="app"><div id="clockFace" aria-label="Hebrew Talking Clock"><div id="timeWords">---</div><div id="dateHebrew">---</div></div><div id="hint">לחיצה קצרה: אמירת השעה.<br>לחיצה ארוכה: אמירת התאריך.<br><span class="note-en">Short tap: say the time. Long press: say the Hebrew date.</span></div></div>
+<button id="fullscreenButton" type="button" aria-label="Full screen">⛶</button><button id="settingsButton" type="button" aria-label="Settings">⚙️</button>
+<div id="panelOverlay"><div id="panel"><h2>⚙️ שעון עברי מדבר<br><span class="bi-en">Hebrew Talking Clock</span></h2>
+<div class="control"><label for="voiceSelect"><span class="bi-main">קול עברי</span><span class="bi-en">Hebrew voice</span></label><select id="voiceSelect"></select><small>הרשימה משתמשת בקולות העבריים שהדפדפן רואה במכשיר. <span class="note-en">The list uses Hebrew voices detected by the browser.</span></small></div>
+<div class="control"><label for="displayModeSelect"><span class="bi-main">תצוגת השעה</span><span class="bi-en">Time display</span></label><select id="displayModeSelect"><option value="words">מילים / Words</option><option value="digits">ספרות עבריות / Hebrew digit letters</option><option value="numbers">מספרים עבריים / Hebrew numbers</option></select><small>שלושה מצבים: שעה במילים, החלפת ספרות באותיות, או כתיבת המספרים לפי גימטריה. <span class="note-en">Three modes: words, digit letters, or Hebrew-number gematria.</span></small></div>
+<div class="control"><label for="hourModeSelect"><span class="bi-main">צורת השעה</span><span class="bi-en">Hour style</span></label><select id="hourModeSelect"><option value="24">עשרים ושלוש שעות / 24-hour words</option><option value="12">שעה רגילה עם בוקר/ערב / 12-hour words</option></select></div>
+<div class="control"><label id="clockSizeLabel" for="clockSizeRange">גודל המסך: <span id="clockSizeValue">100%</span><br><span class="bi-en">Clock face size</span></label><input type="range" id="clockSizeRange" min="50" max="200" step="5" value="100"><div class="scale-marks"><span>50%</span><span>100%</span><span>150%</span><span>200%</span></div></div>
+<div class="control"><label id="timeSizeLabel" for="timeSizeRange">גודל המילים: <span id="timeSizeValue">100%</span><br><span class="bi-en">Time word size</span></label><input type="range" id="timeSizeRange" min="45" max="160" step="5" value="100"><div class="scale-marks"><span>45%</span><span>100%</span><span>160%</span></div></div>
+<div class="control"><label id="rateLabel" for="rateRange">מהירות הדיבור: <span id="rateValue">1.0</span><br><span class="bi-en">Speech speed</span></label><input type="range" id="rateRange" min="0.6" max="1.4" step="0.1" value="1.0"></div>
+<div class="row"><button class="action" id="testVoice" type="button"><span class="btn-main">בדיקת קול</span><span class="btn-en">Test voice</span></button><button class="action secondary" id="createIconButton" type="button"><span class="btn-main">יצירת אייקון</span><span class="btn-en">Create icon</span></button><button class="action secondary" id="closePanel" type="button"><span class="btn-main">סיום</span><span class="btn-en">Done</span></button><div id="installPanel"></div><div id="diagPanel"></div></div><div id="status"></div></div></div>
+<script>
+const BUILD_ID="HEBREW-TALKING-CLOCK-1.1-DISPLAY-MODES";
+const SETTINGS_KEY="hebrew_talking_clock_1_1_settings";
+const HEBREW_MONTHS={"Tishri":"תשרי","Cheshvan":"חשוון","Kislev":"כסלו","Tevet":"טבת","Shevat":"שבט","Adar":"אדר","Adar I":"אדר א׳","Adar II":"אדר ב׳","Nisan":"ניסן","Iyyar":"אייר","Sivan":"סיוון","Tammuz":"תמוז","Av":"אב","Elul":"אלול"};
+const voiceSelect=document.getElementById('voiceSelect'),displayModeSelect=document.getElementById('displayModeSelect'),hourModeSelect=document.getElementById('hourModeSelect'),clockSizeRange=document.getElementById('clockSizeRange'),timeSizeRange=document.getElementById('timeSizeRange'),rateRange=document.getElementById('rateRange'),clockSizeValue=document.getElementById('clockSizeValue'),timeSizeValue=document.getElementById('timeSizeValue'),rateValue=document.getElementById('rateValue'),timeWords=document.getElementById('timeWords'),dateHebrew=document.getElementById('dateHebrew'),voiceBadge=document.getElementById('voiceBadge'),settingsButton=document.getElementById('settingsButton'),fullscreenButton=document.getElementById('fullscreenButton'),panelOverlay=document.getElementById('panelOverlay'),closePanel=document.getElementById('closePanel'),testVoice=document.getElementById('testVoice'),createIconButton=document.getElementById('createIconButton'),installPanel=document.getElementById('installPanel'),diagPanel=document.getElementById('diagPanel'),statusBox=document.getElementById('status'),clockFace=document.getElementById('clockFace');
+let selectedVoiceKey='auto', lastDate=new Date(), longPressTimer=null, longPressFired=false, deferredInstallPrompt=null, lastVoicesSignature='';
+function getVoices(){return ('speechSynthesis' in window)?speechSynthesis.getVoices()||[]:[]}
+function voiceKey(v){return [v.voiceURI||'',v.name||'',v.lang||''].join('||')}
+function hebrewVoices(){return getVoices().filter(v=>(v.lang||'').toLowerCase().startsWith('he')).sort((a,b)=>(a.lang+a.name).localeCompare(b.lang+b.name))}
+function populateVoices(){const old=selectedVoiceKey; voiceSelect.innerHTML=''; const auto=document.createElement('option'); auto.value='auto'; auto.textContent='בחירה אוטומטית / Auto'; voiceSelect.appendChild(auto); hebrewVoices().forEach(v=>{const o=document.createElement('option'); o.value=voiceKey(v); o.textContent=(v.lang||'?')+' | '+(v.name||'?'); voiceSelect.appendChild(o)}); voiceSelect.value=[...voiceSelect.options].some(o=>o.value===old)?old:'auto'; selectedVoiceKey=voiceSelect.value; updateVoiceBadge()}
+function refreshVoices(force=false){const sig=getVoices().map(voiceKey).join('\n'); if(!force&&sig===lastVoicesSignature)return; lastVoicesSignature=sig; populateVoices()}
+function chooseVoice(){if(selectedVoiceKey!=='auto'){const v=getVoices().find(x=>voiceKey(x)===selectedVoiceKey); if(v)return v;} return hebrewVoices()[0]||null}
+function updateVoiceBadge(){const v=chooseVoice(); voiceBadge.textContent=v?'voice: '+(v.name||'?')+' ['+(v.lang||'?')+']':'voice: auto / Hebrew'}
+function saveSettings(){localStorage.setItem(SETTINGS_KEY,JSON.stringify({voiceKey:selectedVoiceKey,displayMode:displayModeSelect.value,hourMode:hourModeSelect.value,clockSize:Number(clockSizeRange.value),timeSize:Number(timeSizeRange.value),rate:Number(rateRange.value)}))}
+function loadSettings(){try{const s=JSON.parse(localStorage.getItem(SETTINGS_KEY)||'{}'); if(s.voiceKey)selectedVoiceKey=s.voiceKey; if(s.displayMode)displayModeSelect.value=s.displayMode; if(s.hourMode)hourModeSelect.value=s.hourMode; if(s.clockSize){clockSizeRange.value=s.clockSize; applyClockSize(s.clockSize)} if(s.timeSize){timeSizeRange.value=s.timeSize; applyTimeSize(s.timeSize)} if(s.rate){rateRange.value=s.rate; rateValue.textContent=Number(s.rate).toFixed(1)} }catch(e){}}
+function applyClockSize(v){clockSizeValue.textContent=Number(v)+'%'; document.documentElement.style.setProperty('--clock-scale',String((Number(v)||100)/100))}
+function applyTimeSize(v){timeSizeValue.textContent=Number(v)+'%'; document.documentElement.style.setProperty('--time-scale',String((Number(v)||100)/100))}
+const units=['אפס','אחת','שתיים','שלוש','ארבע','חמש','שש','שבע','שמונה','תשע'];
+const teens={10:'עשר',11:'אחת עשרה',12:'שתים עשרה',13:'שלוש עשרה',14:'ארבע עשרה',15:'חמש עשרה',16:'שש עשרה',17:'שבע עשרה',18:'שמונה עשרה',19:'תשע עשרה'};
+const tens={20:'עשרים',30:'שלושים',40:'ארבעים',50:'חמישים',60:'שישים',70:'שבעים',80:'שמונים',90:'תשעים'};
+function numWords(n){n=Number(n); if(n<10)return units[n]; if(n<20)return teens[n]; if(n<100){const t=Math.floor(n/10)*10,u=n%10; return tens[t]+(u?' ו'+units[u]:'')} if(n<1000){const h=Math.floor(n/100),r=n%100; const hw={1:'מאה',2:'מאתיים',3:'שלוש מאות',4:'ארבע מאות',5:'חמש מאות',6:'שש מאות',7:'שבע מאות',8:'שמונה מאות',9:'תשע מאות'}[h]; return hw+(r?' '+numWords(r):'')} if(n<10000){const th=Math.floor(n/1000),r=n%1000; const thw=th===5?'חמשת אלפים':numWords(th)+' אלפים'; return thw+(r?' '+numWords(r):'')} return String(n)}
+function partOfDay(h){if(h>=5&&h<12)return 'בבוקר'; if(h>=12&&h<18)return 'אחר הצהריים'; if(h>=18&&h<22)return 'בערב'; return 'בלילה'}
+function two(n){return String(n).padStart(2,'0')}
+function hebrewDigitLetters(n){const map={'0':'0','1':'א','2':'ב','3':'ג','4':'ד','5':'ה','6':'ו','7':'ז','8':'ח','9':'ט'};return String(n).replace(/\d/g,d=>map[d]||d)}
+function hebrewNumberForTime(n){return gematria(Number(n),true)}
+function timePhrase(d=new Date()){
+ const h=d.getHours(),m=d.getMinutes(),mode=displayModeSelect.value;
+ if(mode==='digits'){return hebrewDigitLetters(two(h))+':'+hebrewDigitLetters(two(m))}
+ if(mode==='numbers'){return hebrewNumberForTime(h)+':'+hebrewNumberForTime(m)}
+ if(hourModeSelect.value==='12'){let hh=h%12; if(hh===0)hh=12; return numWords(hh)+(m?': '+numWords(m):' בדיוק')+' '+partOfDay(h)}
+ return numWords(h)+': '+numWords(m)
+}
+function speakTimePhrase(d=new Date()){const h=d.getHours(),m=d.getMinutes(); if(hourModeSelect.value==='12'){let hh=h%12; if(hh===0)hh=12; return 'השעה '+numWords(hh)+(m?' ו'+numWords(m)+' דקות':' בדיוק')+' '+partOfDay(h)} return 'השעה '+numWords(h)+' ו'+numWords(m)+' דקות'}
+function getHebrewParts(d){let parts={}; try{new Intl.DateTimeFormat('en-u-ca-hebrew',{weekday:'long',day:'numeric',month:'long',year:'numeric'}).formatToParts(d).forEach(p=>{if(p.type!=='literal')parts[p.type]=p.value})}catch(e){parts={}} return parts}
+function hebrewWeekday(d){return new Intl.DateTimeFormat('he-IL',{weekday:'long'}).format(d)}
+function gematria(n, geresh=true){n=Number(n); if(!isFinite(n)||n<=0)return String(n); const letters=[[400,'ת'],[300,'ש'],[200,'ר'],[100,'ק'],[90,'צ'],[80,'פ'],[70,'ע'],[60,'ס'],[50,'נ'],[40,'מ'],[30,'ל'],[20,'כ'],[19,'יט'],[18,'יח'],[17,'יז'],[16,'טז'],[15,'טו'],[10,'י'],[9,'ט'],[8,'ח'],[7,'ז'],[6,'ו'],[5,'ה'],[4,'ד'],[3,'ג'],[2,'ב'],[1,'א']]; let out=''; for(const [val,ch] of letters){while(n>=val){out+=ch;n-=val}} if(!geresh)return out; if(out.length===1)return out+'׳'; return out.slice(0,-1)+'״'+out.slice(-1)}
+function hebrewDateDisplay(d=new Date()){const p=getHebrewParts(d); const day=Number(p.day||0), year=Number(p.year||0); const month=HEBREW_MONTHS[p.month]||p.month||''; const y=year?gematria(year%1000):''; return hebrewWeekday(d)+', '+gematria(day)+' ב'+month+' '+y}
+function hebrewDateSpeech(d=new Date()){const p=getHebrewParts(d); const day=Number(p.day||0), year=Number(p.year||0); const month=HEBREW_MONTHS[p.month]||p.month||''; return 'היום '+hebrewWeekday(d)+', '+numWords(day)+' ב'+month+', שנת '+numWords(year)}
+function updateClock(){lastDate=new Date(); timeWords.textContent=timePhrase(lastDate); dateHebrew.textContent=hebrewDateDisplay(lastDate)}
+function speak(text,showDiag=true){if(!('speechSynthesis' in window)){statusBox.textContent='speechSynthesis אינו זמין / speechSynthesis unavailable';return} refreshVoices(); try{speechSynthesis.cancel()}catch(e){} setTimeout(()=>{const u=new SpeechSynthesisUtterance(text); u.lang='he-IL'; u.rate=Number(rateRange.value)||1; const v=chooseVoice(); if(v)u.voice=v; if(showDiag){diagPanel.classList.add('active'); diagPanel.innerHTML='<div class="mono">Voice: '+escapeHtml(v?`${v.name} [${v.lang}]`:'auto / no Hebrew voice')+'\nText:\n'+escapeHtml(text)+'</div>'} statusBox.textContent='מנסה לדבר / Trying to speak'; u.onstart=()=>{statusBox.textContent='מדבר / Speaking'; updateVoiceBadge()}; u.onend=()=>{statusBox.textContent='סיום / Done'; updateVoiceBadge()}; u.onerror=e=>{statusBox.textContent='שגיאת דיבור / Speech error: '+(e.error||'unknown'); updateVoiceBadge()}; try{speechSynthesis.speak(u)}catch(e){statusBox.textContent='שגיאת דיבור / Speech error: '+e.message}},160)}
+function startPress(e){e.preventDefault();longPressFired=false;clearTimeout(longPressTimer);longPressTimer=setTimeout(()=>{longPressFired=true;speak(hebrewDateSpeech(lastDate),false)},750)}
+function endPress(e){e.preventDefault();clearTimeout(longPressTimer);if(!longPressFired)speak(speakTimePhrase(lastDate),false)}
+function escapeHtml(s){return String(s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
+window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredInstallPrompt=e});
+window.addEventListener('appinstalled',()=>{deferredInstallPrompt=null;installPanel.classList.add('active');installPanel.textContent='האייקון נוצר / Icon created'});
+async function createIcon(){saveSettings();installPanel.classList.add('active');if(deferredInstallPrompt){const p=deferredInstallPrompt;deferredInstallPrompt=null;installPanel.textContent='פותח חלון התקנה / Opening install prompt';try{p.prompt();const c=await p.userChoice;installPanel.textContent='תוצאה / Result: '+(c&&c.outcome?c.outcome:'OK')}catch(e){installPanel.textContent='חלון המערכת לא נפתח / System prompt did not open'}}else{installPanel.textContent=/iPad|iPhone|iPod/.test(navigator.userAgent)?'iPhone: Share → Add to Home Screen':'Android: browser menu ⋮ → Add to Home screen / Install app'}}
+async function toggleFullscreen(){try{if(document.fullscreenElement)await document.exitFullscreen();else if(document.documentElement.requestFullscreen)await document.documentElement.requestFullscreen()}catch(e){statusBox.textContent='מסך מלא אינו זמין / Full screen unavailable'}}
+clockFace.addEventListener('pointerdown',startPress);clockFace.addEventListener('pointerup',endPress);clockFace.addEventListener('pointercancel',()=>clearTimeout(longPressTimer));clockFace.addEventListener('pointerleave',()=>clearTimeout(longPressTimer));
+settingsButton.onclick=()=>{refreshVoices(true);panelOverlay.classList.add('active')}; closePanel.onclick=()=>{saveSettings();panelOverlay.classList.remove('active')}; fullscreenButton.onclick=toggleFullscreen; testVoice.onclick=()=>speak('בדיקת השעון העברי המדבר. '+speakTimePhrase(lastDate),true); createIconButton.onclick=createIcon;
+voiceSelect.onchange=()=>{selectedVoiceKey=voiceSelect.value;saveSettings();updateVoiceBadge();statusBox.textContent='הקול נבחר / Voice selected'}; displayModeSelect.onchange=()=>{updateClock();saveSettings()}; hourModeSelect.onchange=()=>{updateClock();saveSettings()}; clockSizeRange.oninput=()=>{applyClockSize(clockSizeRange.value);saveSettings()}; timeSizeRange.oninput=()=>{applyTimeSize(timeSizeRange.value);saveSettings()}; rateRange.oninput=()=>{rateValue.textContent=Number(rateRange.value).toFixed(1);saveSettings()};
+if('speechSynthesis' in window){speechSynthesis.onvoiceschanged=()=>refreshVoices(true);setTimeout(()=>refreshVoices(true),300);setTimeout(()=>refreshVoices(true),1500)}
+refreshVoices(true);loadSettings();populateVoices();applyClockSize(clockSizeRange.value);applyTimeSize(timeSizeRange.value);updateClock();setInterval(updateClock,1000);
+</script>
+</body>
+</html>
