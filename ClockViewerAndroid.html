@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Clock">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>Clock Viewer - SAFE-BASE-01-CACHE-FIX2</title>
+<title>Clock Viewer - SAFE-BASE-05-IOS-STARTMODEL-FALLBACK</title>
 <style>
 :root{--bg:#0f172a;--text:#1f2937;--muted:#64748b}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -127,15 +127,15 @@ small{display:block;color:var(--muted);margin-top:4px;line-height:1.35}
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Clock Viewer">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<link rel="manifest" href="clock_manifest.json?v=SAFE-BASE-04-LOCAL-LIST">
-<link rel="apple-touch-icon" href="clock_icon_192.png?v=SAFE-BASE-04-LOCAL-LIST">
-<meta name="clock-engine-version" content="SAFE-BASE-04-LOCAL-LIST">
+<link rel="manifest" href="clock_manifest.json?v=SAFE-BASE-05-IOS-STARTMODEL-FALLBACK">
+<link rel="apple-touch-icon" href="clock_icon_192.png?v=SAFE-BASE-05-IOS-STARTMODEL-FALLBACK">
+<meta name="clock-engine-version" content="SAFE-BASE-05-IOS-STARTMODEL-FALLBACK">
 <meta name="clock-cache-test-stamp" content="CACHE-FIX2-20260614-01">
 </head>
 <body>
-<div id="clockBuildBadge" class="build-badge">BUILD SAFE-BASE-04-LOCAL-LIST</div>
-<div id="clockCacheTestBadge" class="cache-test-badge">LOCAL LIST
-20260614-05</div>
+<div id="clockBuildBadge" class="build-badge">BUILD SAFE-BASE-05-IOS-STARTMODEL-FALLBACK</div>
+<div id="clockCacheTestBadge" class="cache-test-badge">IOS START
+20260619-01</div>
 
 
 <div class="clock-screen">
@@ -387,7 +387,7 @@ small{display:block;color:var(--muted);margin-top:4px;line-height:1.35}
 </div>
 
 <script>
-const CLOCK_CACHE_BUST_VERSION="SAFE-BASE-04-LOCAL-LIST";
+const CLOCK_CACHE_BUST_VERSION="SAFE-BASE-05-IOS-STARTMODEL-FALLBACK";
 
 
 function showClockEmergencyError(error){
@@ -407,7 +407,7 @@ window.addEventListener("unhandledrejection",function(event){
   showClockEmergencyError(event.reason || "Unhandled promise rejection");
 });
 
-// CLOCK_ENGINE_VERSION: SAFE-BASE-04-LOCAL-LIST
+// CLOCK_ENGINE_VERSION: SAFE-BASE-05-IOS-STARTMODEL-FALLBACK
 
 const canvas=document.getElementById("clock");
 const ctx=canvas.getContext("2d");
@@ -548,7 +548,7 @@ function showInstallPromptPanel(modelName){
     if(deferredInstallPrompt){
       els.text.textContent="Стартовая модель "+name+" сохранена. Можно создать иконку часов.";
     }else{
-      els.text.textContent="Стартовая модель "+name+" сохранена. Если системная кнопка установки недоступна, используйте меню браузера ⋮ → Добавить на главный экран / Установить приложение.";
+      els.text.textContent="Стартовая модель "+name+" сохранена. Если системная кнопка установки недоступна, используйте меню браузера ⋮ → Добавить на главный экран / Установить приложение. На iPhone/iPad: Поделиться → Добавить на экран Домой.";
     }
   }
 
@@ -1574,7 +1574,14 @@ function saveLocalModelByName(name,settings){
   modelNameInput.value=rawName;
   currentGitHubModelId="";
   setAddressToLocalModel(rawName);
-  modelStatus.textContent="Локальная модель сохранена на этом устройстве: "+rawName;
+
+  try{
+    localStorage.setItem(AUTOSTART_LOCAL_MODEL_KEY,rawName);
+  }catch(e){
+    console.log("Не удалось сохранить стартовую модель:",e);
+  }
+
+  modelStatus.textContent="Локальная модель сохранена и назначена стартовой для иконки: "+rawName;
   renderModelList();
   return true;
 }
@@ -2082,15 +2089,39 @@ function loadLocalModelByName(name,makeAutostart=false){
   return true;
 }
 
-function loadLocalModelFromQuery(){
+function stripLocalSuffix(name){
+  const s=String(name||"").trim();
+  return /L$/i.test(s) ? s.slice(0,-1) : s;
+}
+
+async function loadLocalModelOrGitHubFallback(localName,sourceLabel="local-fallback"){
+  const requestedName=String(localName||"").trim();
+  if(!requestedName)return false;
+
+  const loadedLocal=loadLocalModelByName(requestedName,false);
+  if(loadedLocal)return true;
+
+  const githubId=stripLocalSuffix(requestedName);
+  if(githubId && githubId!==requestedName){
+    const msg="Локальная модель не найдена: "+requestedName+". Пробую GitHub-модель: "+githubId;
+    modelStatus.textContent=msg;
+    if(modelPickerStatus)modelPickerStatus.textContent=msg;
+    return await loadModelFromGitHubById(githubId,sourceLabel,false);
+  }
+
+  return false;
+}
+
+async function loadLocalModelFromQuery(){
   const params=new URLSearchParams(location.search);
   const localParam=params.get("local");
   if(!localParam)return false;
-  return loadLocalModelByName(localParam);
+  return await loadLocalModelOrGitHubFallback(localParam,"query-local-fallback");
 }
 
 function makeLocalModelLaunchLink(name){
-  return location.origin+location.pathname+"?mode=local";
+  const localName=makeLocalModelName(name || getAutostartLocalModel() || modelNameInput.value || currentGitHubModelId || "local-clock-model");
+  return location.origin+location.pathname+"?mode=local&local="+encodeURIComponent(localName);
 }
 
 function setAutostartLocalModel(name){
@@ -2160,10 +2191,10 @@ function openMainModelMenu(){
   showModelPickerFromIndex();
 }
 
-function loadAutostartLocalModel(){
+async function loadAutostartLocalModel(){
   const name=getAutostartLocalModel();
   if(!name)return false;
-  return loadLocalModelByName(name,false);
+  return await loadLocalModelOrGitHubFallback(name,"autostart-fallback");
 }
 
 function makeActionButton(text,cssClass,onClick){
@@ -2439,8 +2470,18 @@ function installLocalModelButtonHandlers(){
       currentGitHubModelId="";
       modelNameInput.value=name;
       setAddressToLocalModel(name);
-      modelStatus.textContent="Локальная модель сохранена на этом устройстве: "+name;
+
+      try{
+        localStorage.setItem(AUTOSTART_LOCAL_MODEL_KEY,name);
+      }catch(e){
+        console.log("Не удалось сохранить стартовую модель:",e);
+      }
+
+      modelStatus.textContent="Локальная модель сохранена и назначена стартовой для иконки: "+name;
       renderModelList();
+      if(typeof showStartModelInstallOffer==="function"){
+        showStartModelInstallOffer(name);
+      }
     };
   }
 
@@ -2533,9 +2574,9 @@ async function initClockApp(){
     }else if(shouldForceMainMenu()){
       await showModelPickerFromIndex();
     }else if(standaloneLaunch || isLocalRunMode()){
-      const loadedFromLocal=loadLocalModelFromQuery();
+      const loadedFromLocal=await loadLocalModelFromQuery();
       if(!loadedFromLocal){
-        const loadedFromAutostart=loadAutostartLocalModel();
+        const loadedFromAutostart=await loadAutostartLocalModel();
         if(!loadedFromAutostart){
           await showModelPickerFromIndex();
         }
@@ -2560,7 +2601,7 @@ initClockApp().catch(error=>{
   if(!el)return;
   var q=window.location.search || "без ?v";
   var t=new Date();
-  el.textContent="LOCAL LIST\n20260614-05\n"+q+"\n"+t.toLocaleTimeString();
+  el.textContent="IOS START\n20260619-01\n"+q+"\n"+t.toLocaleTimeString();
 })();
 </script>
 
