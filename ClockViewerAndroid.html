@@ -59,6 +59,8 @@ small{display:block;color:var(--muted);margin-top:4px;line-height:1.35}
 .hex-preview{height:36px;border-radius:8px;border:1px solid #cbd5e1;margin-top:10px}
 .model-list{display:flex;flex-direction:column;gap:8px;margin-top:10px}
 .model-row{display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:center;background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:8px}
+.model-row.start-model{background:#dcfce7;border-color:#22c55e;box-shadow:0 0 0 2px rgba(34,197,94,.18) inset}
+.model-row.start-model .model-name{color:#14532d}
 .model-name{font-weight:bold;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .model-row button{padding:7px 10px;border:none;border-radius:8px;color:#fff;cursor:pointer;font-weight:bold}
 .load-model{background:#2563eb}
@@ -1550,6 +1552,7 @@ function saveCurrentSettingsAsAutostartLocalModel(name,settings){
 
   modelNameInput.value=rawName;
   currentGitHubModelId="";
+  setAddressToLocalModel(rawName);
 
   try{
     localStorage.setItem(AUTOSTART_LOCAL_MODEL_KEY,rawName);
@@ -1614,7 +1617,7 @@ document.getElementById("createLocalLink").onclick=()=>{
   const url=makeLocalModelLaunchLink(localName);
 
   closeStartupOverlays();
-  showModelStatus("✅ Текущая настройка сохранена и назначена стартовой: "+localName,"createLocalLink");
+  showModelStatus("✅ Локальная модель сохранена и назначена кнопке / иконке: "+localName,"createLocalLink");
 
   if(navigator.clipboard && navigator.clipboard.writeText){
     navigator.clipboard.writeText(url).catch(()=>{});
@@ -1652,7 +1655,8 @@ importLocalModelFile.onchange=async e=>{
     importLocalModelFile.value="";
   }
 };
-
+  };
+}
 if(modelPickerImportJson){
   modelPickerImportJson.onclick=()=>{
     if(importLocalModelFile){
@@ -1680,18 +1684,23 @@ function renderModelList(){
     .sort((a,b)=>a.localeCompare(b,"ru"));
   modelList.innerHTML="";
 
+  const startRaw=getAutostartLocalModel();
+  const startName=startRaw ? makeLocalModelName(startRaw) : "";
+
   if(!names.length){
     modelStatus.textContent="Локальных моделей на этом устройстве пока нет.";
     return;
   }
 
   names.forEach(name=>{
+    const isStart=startName && makeLocalModelName(name).toLowerCase()===startName.toLowerCase();
     const row=document.createElement("div");
-    row.className="model-row";
+    row.className="model-row"+(isStart ? " start-model" : "");
+    row.title=isStart ? "Эта локальная модель назначена кнопке / иконке" : "";
 
     const title=document.createElement("div");
     title.className="model-name";
-    title.textContent=name;
+    title.textContent=(isStart ? "⭐ " : "")+name;
 
     const editBtn=document.createElement("button");
     editBtn.className="load-model";
@@ -2150,6 +2159,7 @@ function setAutostartLocalModel(name){
     console.log("Не удалось сохранить стартовую модель:",e);
   }
 
+  if(typeof renderModelList==="function")renderModelList();
   showStartModelInstallOffer(localName);
 }
 
@@ -2461,7 +2471,7 @@ async function showModelPickerFromIndex(){
       });
     }
 
-    modelPickerStatus.textContent="START-MODEL версия. Доступно моделей GitHub: "+items.length+", локальных: "+localNames.length+". Кнопка ‘Сделать стартовой’ задаёт локальную стартовую модель для иконки.";
+    modelPickerStatus.textContent="START-MODEL версия. Доступно моделей GitHub: "+items.length+", локальных: "+localNames.length+". Кнопка ‘Сделать стартовой’ создаёт/выбирает локальную модель и назначает её кнопке / иконке.";
     return true;
   }catch(e){
     modelPickerStatus.textContent="Ошибка загрузки списка моделей. Можно импортировать присланный JSON-файл модели.";
