@@ -129,15 +129,15 @@ small{display:block;color:var(--muted);margin-top:4px;line-height:1.35}
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Clock Viewer">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<link rel="manifest" href="clock_manifest.json?v=SAFE-BASE-06-LOCAL-MODEL-CLEAN">
-<link rel="apple-touch-icon" href="clock_icon_192.png?v=SAFE-BASE-06-LOCAL-MODEL-CLEAN">
-<meta name="clock-engine-version" content="SAFE-BASE-06-LOCAL-MODEL-CLEAN">
+<link rel="manifest" href="clock_manifest.json?v=SAFE-BASE-07-ICON-PRIORITY">
+<link rel="apple-touch-icon" href="clock_icon_192.png?v=SAFE-BASE-07-ICON-PRIORITY">
+<meta name="clock-engine-version" content="SAFE-BASE-07-ICON-PRIORITY">
 <meta name="clock-cache-test-stamp" content="CACHE-FIX2-20260614-01">
 </head>
 <body>
-<div id="clockBuildBadge" class="build-badge">BUILD SAFE-BASE-06-LOCAL-MODEL-CLEAN</div>
-<div id="clockCacheTestBadge" class="cache-test-badge">LOCAL MODEL CLEAN
-20260621-02</div>
+<div id="clockBuildBadge" class="build-badge">BUILD SAFE-BASE-07-ICON-PRIORITY</div>
+<div id="clockCacheTestBadge" class="cache-test-badge">ICON PRIORITY
+20260621-03</div>
 
 
 <div class="clock-screen">
@@ -373,7 +373,7 @@ small{display:block;color:var(--muted);margin-top:4px;line-height:1.35}
 </div>
 
 <script>
-const CLOCK_CACHE_BUST_VERSION="SAFE-BASE-06-LOCAL-MODEL-CLEAN";
+const CLOCK_CACHE_BUST_VERSION="SAFE-BASE-07-ICON-PRIORITY";
 
 
 function showClockEmergencyError(error){
@@ -393,7 +393,7 @@ window.addEventListener("unhandledrejection",function(event){
   showClockEmergencyError(event.reason || "Unhandled promise rejection");
 });
 
-// CLOCK_ENGINE_VERSION: SAFE-BASE-06-LOCAL-MODEL-CLEAN
+// CLOCK_ENGINE_VERSION: SAFE-BASE-07-ICON-PRIORITY
 
 const canvas=document.getElementById("clock");
 const ctx=canvas.getContext("2d");
@@ -2147,7 +2147,10 @@ function loadLocalModelFromQuery(){
 
 function makeLocalModelLaunchLink(name){
   const localName=makeLocalModelName(name || getAutostartLocalModel() || modelNameInput.value || currentGitHubModelId || "local-clock-model");
-  return location.origin+location.pathname+"?mode=local&local="+encodeURIComponent(localName);
+  /* Сохраняем актуальное имя в localStorage, а URL делаем нейтральным.
+     Так будущая иконка не будет навечно привязана к старому ?local=AutoL. */
+  try{ localStorage.setItem(AUTOSTART_LOCAL_MODEL_KEY,localName); }catch(e){}
+  return location.origin+location.pathname+"?mode=local";
 }
 
 function setAutostartLocalModel(name){
@@ -2253,6 +2256,29 @@ async function loadGitHubFallbackFromLocalName(localName){
 async function loadStartupModelWithFallback(){
   closeStartupOverlays();
 
+  /* ICON START PRIORITY FIX:
+     Старые Android/iOS/PWA-иконки могли быть созданы с жёстким URL вида
+     ?mode=local&local=AutoL. Если после этого пользователь назначил другую
+     локальную модель стартовой, такой URL всё равно тащил старую AutoL.
+
+     Правильное правило теперь такое:
+     1) сначала всегда читаем актуальную стартовую модель из localStorage;
+     2) только если её нет, используем legacy-параметр ?local=... из старой иконки;
+     3) если локальная ...L не найдена, тогда пробуем GitHub-модель без L;
+     4) если ничего не найдено, показываем главное меню. */
+
+  const startLocal=getAutostartLocalModel();
+  if(startLocal){
+    if(loadLocalModelByName(startLocal,false)){
+      closeStartupOverlays();
+      return true;
+    }
+    if(await loadGitHubFallbackFromLocalName(startLocal)){
+      closeStartupOverlays();
+      return true;
+    }
+  }
+
   const params=new URLSearchParams(location.search);
   const queryLocal=params.get("local");
 
@@ -2262,18 +2288,6 @@ async function loadStartupModelWithFallback(){
       return true;
     }
     if(await loadGitHubFallbackFromLocalName(queryLocal)){
-      closeStartupOverlays();
-      return true;
-    }
-  }
-
-  const startLocal=getAutostartLocalModel();
-  if(startLocal){
-    if(loadLocalModelByName(startLocal,false)){
-      closeStartupOverlays();
-      return true;
-    }
-    if(await loadGitHubFallbackFromLocalName(startLocal)){
       closeStartupOverlays();
       return true;
     }
