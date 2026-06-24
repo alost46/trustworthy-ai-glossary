@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Clock">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>Clock Viewer - SAFE-BASE-10-PURPLE-START-STAR</title>
+<title>Clock Viewer - SAFE-BASE-11-AGGRESSIVE-ANTICACHE</title>
 <style>
 :root{--bg:#0f172a;--text:#1f2937;--muted:#64748b}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -130,15 +130,15 @@ small{display:block;color:var(--muted);margin-top:4px;line-height:1.35}
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Clock Viewer">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<link rel="manifest" href="clock_manifest.json?v=SAFE-BASE-10-PURPLE-START-STAR">
-<link rel="apple-touch-icon" href="clock_icon_192.png?v=SAFE-BASE-10-PURPLE-START-STAR">
-<meta name="clock-engine-version" content="SAFE-BASE-10-PURPLE-START-STAR">
-<meta name="clock-cache-test-stamp" content="CACHE-FIX2-20260614-01">
+<link rel="manifest" href="clock_manifest.json?v=SAFE-BASE-11-AGGRESSIVE-ANTICACHE">
+<link rel="apple-touch-icon" href="clock_icon_192.png?v=SAFE-BASE-11-AGGRESSIVE-ANTICACHE">
+<meta name="clock-engine-version" content="SAFE-BASE-11-AGGRESSIVE-ANTICACHE">
+<meta name="clock-cache-test-stamp" content="CACHE-FIX3-20260625-01">
 </head>
 <body>
-<div id="clockBuildBadge" class="build-badge">BUILD SAFE-BASE-10-PURPLE-START-STAR</div>
-<div id="clockCacheTestBadge" class="cache-test-badge">PURPLE START STAR
-20260623-02</div>
+<div id="clockBuildBadge" class="build-badge">BUILD SAFE-BASE-11-AGGRESSIVE-ANTICACHE</div>
+<div id="clockCacheTestBadge" class="cache-test-badge">AGGRESSIVE ANTICACHE
+20260625-01</div>
 
 
 <div class="clock-screen">
@@ -374,7 +374,51 @@ small{display:block;color:var(--muted);margin-top:4px;line-height:1.35}
 </div>
 
 <script>
-const CLOCK_CACHE_BUST_VERSION="SAFE-BASE-10-PURPLE-START-STAR";
+const CLOCK_CACHE_BUST_VERSION="SAFE-BASE-11-AGGRESSIVE-ANTICACHE";
+
+
+
+/* SAFE-BASE-11 AGGRESSIVE ANTICACHE:
+   On each new build, remove old ClockViewer service workers so Android Chrome
+   cannot serve an older HTML from a stale PWA cache. */
+(function(){
+  try{
+    const CACHE_BUILD_KEY="clockviewer_last_seen_build";
+    const previousBuild=localStorage.getItem(CACHE_BUILD_KEY);
+    const currentBuild=CLOCK_CACHE_BUST_VERSION;
+
+    if(previousBuild!==currentBuild){
+      localStorage.setItem(CACHE_BUILD_KEY,currentBuild);
+
+      if("caches" in window){
+        caches.keys().then(keys=>{
+          keys.forEach(key=>{
+            if(/clock|ClockViewer|pwa|workbox/i.test(key)){
+              caches.delete(key).catch(()=>{});
+            }
+          });
+        }).catch(()=>{});
+      }
+
+      if("serviceWorker" in navigator){
+        navigator.serviceWorker.getRegistrations()
+          .then(regs=>{
+            regs.forEach(reg=>{
+              const url=(reg.active&&reg.active.scriptURL)||
+                (reg.waiting&&reg.waiting.scriptURL)||
+                (reg.installing&&reg.installing.scriptURL)||"";
+              if(!url || /clock_service_worker\.js/i.test(url)){
+                reg.unregister().catch(()=>{});
+              }
+            });
+          })
+          .catch(()=>{});
+      }
+    }
+  }catch(e){
+    console.log("Aggressive anticache block error:",e);
+  }
+})();
 
 
 function showClockEmergencyError(error){
@@ -394,7 +438,7 @@ window.addEventListener("unhandledrejection",function(event){
   showClockEmergencyError(event.reason || "Unhandled promise rejection");
 });
 
-// CLOCK_ENGINE_VERSION: SAFE-BASE-10-PURPLE-START-STAR
+// CLOCK_ENGINE_VERSION: SAFE-BASE-11-AGGRESSIVE-ANTICACHE
 
 const canvas=document.getElementById("clock");
 const ctx=canvas.getContext("2d");
@@ -614,28 +658,37 @@ function showStartModelInstallOffer(modelName){
 
 
 /* ANTICACHE / PWA mode:
-   Register the service worker with a versioned URL and force update.
-   This prevents old cached ClockViewer builds from quietly replacing the new HTML. */
+   Aggressive mode: unregister previous ClockViewer service workers, clear ClockViewer caches,
+   then register the current versioned service worker. */
 if("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost")){
   window.addEventListener("load",async ()=>{
     try{
+      if("caches" in window){
+        const keys=await caches.keys();
+        await Promise.all(keys.map(key=>{
+          if(/clock|ClockViewer|pwa|workbox/i.test(key)){
+            return caches.delete(key).catch(()=>{});
+          }
+        }));
+      }
+
       const regs=await navigator.serviceWorker.getRegistrations();
       for(const reg of regs){
         const url=(reg.active && reg.active.scriptURL) ||
           (reg.waiting && reg.waiting.scriptURL) ||
           (reg.installing && reg.installing.scriptURL) || "";
-        if(url && url.indexOf("clock_service_worker.js")<0){
-          await reg.unregister();
+        if(!url || url.indexOf("clock_service_worker.js")>=0 || url.indexOf("ClockViewer")>=0){
+          await reg.unregister().catch(()=>{});
         }
       }
 
       const reg=await navigator.serviceWorker.register(
-        "clock_service_worker.js?v="+encodeURIComponent(CLOCK_CACHE_BUST_VERSION),
+        "clock_service_worker.js?v="+encodeURIComponent(CLOCK_CACHE_BUST_VERSION)+"&t="+Date.now(),
         {updateViaCache:"none"}
       );
       if(reg && reg.update)reg.update().catch(()=>{});
     }catch(e){
-      console.log("Service worker anticache registration error:",e);
+      console.log("Service worker aggressive anticache registration error:",e);
     }
   });
 }
