@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Clock">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>Clock Viewer - SAFE-BASE-01-CACHE-FIX2</title>
+<title>Clock Viewer - SAFE-BASE-10-PURPLE-START-STAR</title>
 <style>
 :root{--bg:#0f172a;--text:#1f2937;--muted:#64748b}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -61,6 +61,7 @@ small{display:block;color:var(--muted);margin-top:4px;line-height:1.35}
 .model-row{display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:center;background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:8px}
 .model-row.start-model{background:#dcfce7;border-color:#22c55e;box-shadow:0 0 0 2px rgba(34,197,94,.18) inset}
 .model-row.start-model .model-name{color:#14532d}
+.start-star{color:#7c3aed;font-weight:900;margin-right:4px;text-shadow:0 0 2px rgba(124,58,237,.35)}
 .model-name{font-weight:bold;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .model-row button{padding:7px 10px;border:none;border-radius:8px;color:#fff;cursor:pointer;font-weight:bold}
 .load-model{background:#2563eb}
@@ -129,15 +130,15 @@ small{display:block;color:var(--muted);margin-top:4px;line-height:1.35}
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Clock Viewer">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<link rel="manifest" href="clock_manifest.json?v=SAFE-BASE-07-ICON-PRIORITY">
-<link rel="apple-touch-icon" href="clock_icon_192.png?v=SAFE-BASE-07-ICON-PRIORITY">
-<meta name="clock-engine-version" content="SAFE-BASE-07-ICON-PRIORITY">
+<link rel="manifest" href="clock_manifest.json?v=SAFE-BASE-10-PURPLE-START-STAR">
+<link rel="apple-touch-icon" href="clock_icon_192.png?v=SAFE-BASE-10-PURPLE-START-STAR">
+<meta name="clock-engine-version" content="SAFE-BASE-10-PURPLE-START-STAR">
 <meta name="clock-cache-test-stamp" content="CACHE-FIX2-20260614-01">
 </head>
 <body>
-<div id="clockBuildBadge" class="build-badge">BUILD SAFE-BASE-07-ICON-PRIORITY</div>
-<div id="clockCacheTestBadge" class="cache-test-badge">ICON PRIORITY
-20260621-03</div>
+<div id="clockBuildBadge" class="build-badge">BUILD SAFE-BASE-10-PURPLE-START-STAR</div>
+<div id="clockCacheTestBadge" class="cache-test-badge">PURPLE START STAR
+20260623-02</div>
 
 
 <div class="clock-screen">
@@ -373,7 +374,7 @@ small{display:block;color:var(--muted);margin-top:4px;line-height:1.35}
 </div>
 
 <script>
-const CLOCK_CACHE_BUST_VERSION="SAFE-BASE-07-ICON-PRIORITY";
+const CLOCK_CACHE_BUST_VERSION="SAFE-BASE-10-PURPLE-START-STAR";
 
 
 function showClockEmergencyError(error){
@@ -393,7 +394,7 @@ window.addEventListener("unhandledrejection",function(event){
   showClockEmergencyError(event.reason || "Unhandled promise rejection");
 });
 
-// CLOCK_ENGINE_VERSION: SAFE-BASE-07-ICON-PRIORITY
+// CLOCK_ENGINE_VERSION: SAFE-BASE-10-PURPLE-START-STAR
 
 const canvas=document.getElementById("clock");
 const ctx=canvas.getContext("2d");
@@ -523,24 +524,46 @@ function hideInstallPromptPanel(){
   if(els.panel)els.panel.classList.remove("active");
 }
 
+function getInstallInstructionText(modelName){
+  const name=modelName ? "«"+modelName+"»" : "выбранной модели";
+  const url=makeLocalModelLaunchLink(modelName || getAutostartLocalModel() || modelNameInput.value || currentGitHubModelId || "local-clock-model");
+  const isIOS=isIOSDevice();
+  const isAndroid=/Android/i.test(navigator.userAgent||"");
+
+  let platformText="";
+  if(isIOS){
+    platformText="iPhone/iPad: Safari → Поделиться → Добавить на экран Домой.";
+  }else if(isAndroid){
+    platformText="Android Chrome: меню ⋮ → Добавить на главный экран / Установить приложение.";
+  }else{
+    platformText="ПК Chrome/Edge: значок установки справа в адресной строке или меню ⋮ → Сохранить и поделиться → Создать ярлык / Установить страницу как приложение.";
+  }
+
+  return "Стартовая локальная модель "+name+" сохранена и назначена кнопке / иконке.\n"+
+    platformText+"\n"+
+    "Запуск из обычной вкладки открывает главное меню. Запуск из созданной иконки открывает стартовую локальную модель.\n"+
+    "Техническая ссылка локального запуска: "+url;
+}
+
 function showInstallPromptPanel(modelName){
   const els=getInstallPromptElements();
   if(!els.panel)return;
 
   els.panel.classList.add("active");
+  els.panel.style.zIndex="999999";
 
   if(els.text){
     const name=modelName ? "«"+modelName+"»" : "выбранной модели";
     if(deferredInstallPrompt){
       els.text.textContent="Стартовая модель "+name+" сохранена. Можно создать иконку часов.";
     }else{
-      els.text.textContent="Стартовая модель "+name+" сохранена. Если системная кнопка установки недоступна, используйте меню браузера ⋮ → Добавить на главный экран / Установить приложение.";
+      els.text.textContent=getInstallInstructionText(modelName);
     }
   }
 
   if(els.button){
-    els.button.disabled=!deferredInstallPrompt;
-    els.button.textContent=deferredInstallPrompt ? "Создать иконку часов" : "Через меню браузера ⋮";
+    els.button.disabled=false;
+    els.button.textContent=deferredInstallPrompt ? "Создать иконку часов" : "Показать инструкцию";
   }
 }
 
@@ -548,10 +571,13 @@ async function runInstallPromptFromButton(){
   const els=getInstallPromptElements();
 
   if(!deferredInstallPrompt){
-    if(els.text){
-      els.text.textContent="Браузер сейчас не выдал системный диалог установки. Используйте меню ⋮ → Добавить на главный экран / Установить приложение.";
+    const text=getInstallInstructionText(getAutostartLocalModel());
+    if(els.text)els.text.textContent=text;
+    try{
+      window.alert(text);
+    }catch(e){
+      console.log("Install instruction alert error:",e);
     }
-    if(els.button)els.button.disabled=true;
     return;
   }
 
@@ -566,10 +592,13 @@ async function runInstallPromptFromButton(){
     }
   }catch(e){
     console.log("Install prompt error:",e);
-    if(els.text)els.text.textContent="Не удалось открыть системный диалог установки. Используйте меню браузера ⋮.";
+    if(els.text)els.text.textContent=getInstallInstructionText(getAutostartLocalModel());
   }
 
-  if(els.button)els.button.disabled=true;
+  if(els.button){
+    els.button.disabled=false;
+    els.button.textContent="Показать инструкцию";
+  }
 }
 
 
@@ -584,12 +613,30 @@ function showStartModelInstallOffer(modelName){
 }
 
 
-/* Production/PWA mode: service worker stays registered.
-   Android installation uses manifest + service worker + start_url. */
+/* ANTICACHE / PWA mode:
+   Register the service worker with a versioned URL and force update.
+   This prevents old cached ClockViewer builds from quietly replacing the new HTML. */
 if("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost")){
-  window.addEventListener("load",()=>{
-    navigator.serviceWorker.register("clock_service_worker.js?v="+encodeURIComponent(CLOCK_CACHE_BUST_VERSION),{updateViaCache:"none"})
-      .catch(e=>console.log("Service worker registration error:",e));
+  window.addEventListener("load",async ()=>{
+    try{
+      const regs=await navigator.serviceWorker.getRegistrations();
+      for(const reg of regs){
+        const url=(reg.active && reg.active.scriptURL) ||
+          (reg.waiting && reg.waiting.scriptURL) ||
+          (reg.installing && reg.installing.scriptURL) || "";
+        if(url && url.indexOf("clock_service_worker.js")<0){
+          await reg.unregister();
+        }
+      }
+
+      const reg=await navigator.serviceWorker.register(
+        "clock_service_worker.js?v="+encodeURIComponent(CLOCK_CACHE_BUST_VERSION),
+        {updateViaCache:"none"}
+      );
+      if(reg && reg.update)reg.update().catch(()=>{});
+    }catch(e){
+      console.log("Service worker anticache registration error:",e);
+    }
   });
 }
 
@@ -1699,7 +1746,15 @@ function renderModelList(){
 
     const title=document.createElement("div");
     title.className="model-name";
-    title.textContent=(isStart ? "⭐ " : "")+name;
+    if(isStart){
+      const star=document.createElement("span");
+      star.className="start-star";
+      star.textContent="⭐";
+      title.appendChild(star);
+      title.appendChild(document.createTextNode(" "+name));
+    }else{
+      title.textContent=name;
+    }
 
     const editBtn=document.createElement("button");
     editBtn.className="load-model";
@@ -2297,13 +2352,13 @@ async function loadStartupModelWithFallback(){
 }
 
 window.addEventListener("pageshow",()=>{
-  if(isStandaloneClockLaunch() || isLocalRunMode()){
+  if(isStandaloneClockLaunch()){
     closeStartupOverlays();
   }
 });
 
 document.addEventListener("visibilitychange",()=>{
-  if(document.visibilityState==="visible" && (isStandaloneClockLaunch() || isLocalRunMode())){
+  if(document.visibilityState==="visible" && isStandaloneClockLaunch()){
     closeStartupOverlays();
   }
 });
@@ -2693,7 +2748,11 @@ async function initClockApp(){
       showLocalModelsPanel();
     }else if(shouldForceMainMenu()){
       await showModelPickerFromIndex();
-    }else if(standaloneLaunch || isLocalRunMode()){
+    }else if(standaloneLaunch){
+      /* PWA-ONLY AUTOSTART:
+         Autostart is allowed only when launched from the installed icon.
+         A normal Safari/Chrome/GitHub page load must show the main model menu,
+         even if ?mode=local remains in the URL from an old shortcut/link. */
       const loadedFromStartup=await loadStartupModelWithFallback();
       if(!loadedFromStartup){
         await showModelPickerFromIndex();
@@ -2718,7 +2777,7 @@ initClockApp().catch(error=>{
   if(!el)return;
   var q=window.location.search || "без ?v";
   var t=new Date();
-  el.textContent="ICON START CLEAN\n20260621-01\n"+q+"\n"+t.toLocaleTimeString();
+  el.textContent="PWA INSTALL HINTS\n20260623-02\n"+q+"\n"+t.toLocaleTimeString();
 })();
 </script>
 
