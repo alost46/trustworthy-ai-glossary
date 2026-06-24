@@ -1749,6 +1749,8 @@ function renderModelList(){
     if(isStart){
       const star=document.createElement("span");
       star.className="start-star";
+      star.style.color="#7c3aed";
+      star.style.textShadow="0 0 2px rgba(124,58,237,.35)";
       star.textContent="⭐";
       title.appendChild(star);
       title.appendChild(document.createTextNode(" "+name));
