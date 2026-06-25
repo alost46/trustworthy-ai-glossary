@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Clock">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>Clock Viewer - SAFE-BASE-13-MENU-FIRST-INSTALL-ONLY</title>
+<title>Clock Viewer - SAFE-BASE-10A-SAFE-ANTICACHE-007</title>
 <style>
 :root{--bg:#0f172a;--text:#1f2937;--muted:#64748b}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -130,15 +130,15 @@ small{display:block;color:var(--muted);margin-top:4px;line-height:1.35}
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Clock Viewer">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<link rel="manifest" href="clock_manifest.json?v=SAFE-BASE-13-MENU-FIRST-INSTALL-ONLY">
-<link rel="apple-touch-icon" href="clock_icon_192.png?v=SAFE-BASE-13-MENU-FIRST-INSTALL-ONLY">
-<meta name="clock-engine-version" content="SAFE-BASE-13-MENU-FIRST-INSTALL-ONLY">
-<meta name="clock-cache-test-stamp" content="CACHE-FIX5-20260625-03">
+<link rel="manifest" href="clock_manifest.json?v=SAFE-BASE-10A-SAFE-ANTICACHE-007">
+<link rel="apple-touch-icon" href="clock_icon_192.png?v=SAFE-BASE-10A-SAFE-ANTICACHE-007">
+<meta name="clock-engine-version" content="SAFE-BASE-10A-SAFE-ANTICACHE-007">
+<meta name="clock-cache-test-stamp" content="CACHE-FIX-SAFE-20260625-007A">
 </head>
 <body>
-<div id="clockBuildBadge" class="build-badge">BUILD SAFE-BASE-13-MENU-FIRST-INSTALL-ONLY</div>
-<div id="clockCacheTestBadge" class="cache-test-badge">MENU FIRST INSTALL ONLY
-20260625-03</div>
+<div id="clockBuildBadge" class="build-badge">BUILD SAFE-BASE-10A-SAFE-ANTICACHE-007</div>
+<div id="clockCacheTestBadge" class="cache-test-badge">SAFE ANTICACHE 007A
+20260625-04</div>
 
 
 <div class="clock-screen">
@@ -374,51 +374,7 @@ small{display:block;color:var(--muted);margin-top:4px;line-height:1.35}
 </div>
 
 <script>
-const CLOCK_CACHE_BUST_VERSION="SAFE-BASE-13-MENU-FIRST-INSTALL-ONLY";
-
-
-
-/* SAFE-BASE-11 AGGRESSIVE ANTICACHE:
-   On each new build, remove old ClockViewer service workers so Android Chrome
-   cannot serve an older HTML from a stale PWA cache. */
-(function(){
-  try{
-    const CACHE_BUILD_KEY="clockviewer_last_seen_build";
-    const previousBuild=localStorage.getItem(CACHE_BUILD_KEY);
-    const currentBuild=CLOCK_CACHE_BUST_VERSION;
-
-    if(previousBuild!==currentBuild){
-      localStorage.setItem(CACHE_BUILD_KEY,currentBuild);
-
-      if("caches" in window){
-        caches.keys().then(keys=>{
-          keys.forEach(key=>{
-            if(/clock|ClockViewer|pwa|workbox/i.test(key)){
-              caches.delete(key).catch(()=>{});
-            }
-          });
-        }).catch(()=>{});
-      }
-
-      if("serviceWorker" in navigator){
-        navigator.serviceWorker.getRegistrations()
-          .then(regs=>{
-            regs.forEach(reg=>{
-              const url=(reg.active&&reg.active.scriptURL)||
-                (reg.waiting&&reg.waiting.scriptURL)||
-                (reg.installing&&reg.installing.scriptURL)||"";
-              if(!url || /clock_service_worker\.js/i.test(url)){
-                reg.unregister().catch(()=>{});
-              }
-            });
-          })
-          .catch(()=>{});
-      }
-    }
-  }catch(e){
-    console.log("Aggressive anticache block error:",e);
-  }
-})();
+const CLOCK_CACHE_BUST_VERSION="SAFE-BASE-10A-SAFE-ANTICACHE-007";
 
 
 function showClockEmergencyError(error){
@@ -438,7 +394,7 @@ window.addEventListener("unhandledrejection",function(event){
   showClockEmergencyError(event.reason || "Unhandled promise rejection");
 });
 
-// CLOCK_ENGINE_VERSION: SAFE-BASE-13-MENU-FIRST-INSTALL-ONLY
+// CLOCK_ENGINE_VERSION: SAFE-BASE-10A-SAFE-ANTICACHE-007
 
 const canvas=document.getElementById("clock");
 const ctx=canvas.getContext("2d");
@@ -540,29 +496,6 @@ function arrangeTopButtons(){
 
 arrangeTopButtons();
 
-
-function shouldShowInstallOffer(){
-  try{
-    return sessionStorage.getItem("clock_allow_install_offer")==="1";
-  }catch(e){
-    return false;
-  }
-}
-function allowOneInstallOffer(){
-  try{
-    sessionStorage.setItem("clock_allow_install_offer","1");
-  }catch(e){}
-}
-function consumeInstallOfferPermission(){
-  try{
-    const ok=sessionStorage.getItem("clock_allow_install_offer")==="1";
-    sessionStorage.removeItem("clock_allow_install_offer");
-    return ok;
-  }catch(e){
-    return false;
-  }
-}
-
 let deferredInstallPrompt=null;
 
 window.addEventListener("beforeinstallprompt",event=>{
@@ -613,7 +546,6 @@ function getInstallInstructionText(modelName){
 }
 
 function showInstallPromptPanel(modelName){
-  if(!consumeInstallOfferPermission())return;
   const els=getInstallPromptElements();
   if(!els.panel)return;
 
@@ -677,33 +609,23 @@ function initInstallPromptPanel(){
 }
 
 function showStartModelInstallOffer(modelName){
-  allowOneInstallOffer();
   showInstallPromptPanel(modelName || getAutostartLocalModel());
 }
 
 
 /* ANTICACHE / PWA mode:
-   Aggressive mode: unregister previous ClockViewer service workers, clear ClockViewer caches,
-   then register the current versioned service worker. */
+   Register the service worker with a versioned URL and force update.
+   This prevents old cached ClockViewer builds from quietly replacing the new HTML. */
 if("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost")){
   window.addEventListener("load",async ()=>{
     try{
-      if("caches" in window){
-        const keys=await caches.keys();
-        await Promise.all(keys.map(key=>{
-          if(/clock|ClockViewer|pwa|workbox/i.test(key)){
-            return caches.delete(key).catch(()=>{});
-          }
-        }));
-      }
-
       const regs=await navigator.serviceWorker.getRegistrations();
       for(const reg of regs){
         const url=(reg.active && reg.active.scriptURL) ||
           (reg.waiting && reg.waiting.scriptURL) ||
           (reg.installing && reg.installing.scriptURL) || "";
-        if(!url || url.indexOf("clock_service_worker.js")>=0 || url.indexOf("ClockViewer")>=0){
-          await reg.unregister().catch(()=>{});
+        if(url && url.indexOf("clock_service_worker.js")<0){
+          await reg.unregister();
         }
       }
 
@@ -713,7 +635,7 @@ if("serviceWorker" in navigator && (location.protocol === "https:" || location.h
       );
       if(reg && reg.update)reg.update().catch(()=>{});
     }catch(e){
-      console.log("Service worker aggressive anticache registration error:",e);
+      console.log("Service worker anticache registration error:",e);
     }
   });
 }
@@ -1751,7 +1673,6 @@ document.getElementById("createLocalLink").onclick=()=>{
   if(typeof showStartModelInstallOffer==="function"){
     showStartModelInstallOffer(localName);
   }else if(typeof showInstallPromptPanel==="function"){
-    allowOneInstallOffer();
     showInstallPromptPanel(localName);
   }else{
     prompt("Ссылка локального запуска для "+localName+":",url);
@@ -1930,16 +1851,6 @@ function draw(){resizeCanvasToScreen();const t=getTimeParts();const dir=SETTINGS
 draw();
 <\/script>
 
-
-<script>
-(function(){
-  var el=document.getElementById("clockCacheTestBadge");
-  if(!el)return;
-  var q=window.location.search || "без ?v";
-  var t=new Date();
-  el.textContent="MENU FIRST INSTALL ONLY\n20260625-03\n"+q+"\n"+t.toLocaleTimeString();
-})();
-</script>
 
 </body>
 </html>`;
@@ -2156,30 +2067,22 @@ async function loadModelFromGitHubById(modelId,sourceLabel,makeAutostart=false){
     applySettings(settings);
     currentGitHubModelId=normalizedId;
 
-    const displayName=data.name || data.title || data.id || normalizedId;
-    modelNameInput.value=displayName;
 
-    /* OPEN-NOLOCAL FIX:
-       Нажатие "Открыть" только открывает GitHub-модель.
-       Оно НЕ создаёт локальную модель и НЕ назначает её стартовой.
-       Локальная модель создаётся только при "Сделать стартовой",
-       "Сохранить локальную модель" или "Create LOCAL LINK / ICON". */
+    modelNameInput.value=data.name || data.title || data.id || normalizedId;
+    const displayName=data.name || data.title || normalizedId;
+    const localName=saveCurrentSettingsAsLocalModel(displayName);
+
     if(makeAutostart){
-      const localName=saveCurrentSettingsAsLocalModel(displayName);
       setAutostartLocalModel(localName);
-      modelStatus.textContent="Модель загружена из GitHub, сохранена как локальная и назначена стартовой: "+localName;
-      if(modelPickerStatus)modelPickerStatus.textContent=modelStatus.textContent;
-    }else{
-      modelStatus.textContent="Модель открыта из GitHub без создания локальной копии: "+displayName;
-      if(modelPickerStatus)modelPickerStatus.textContent=modelStatus.textContent;
     }
+
+    modelStatus.textContent="Модель загружена из GitHub и сохранена как локальная: "+localName;
 
     try{
       localStorage.setItem("clock_last_github_model",normalizedId);
     }catch(e){}
 
     if(modelPicker)modelPicker.classList.remove("active");
-    renderModelList();
     return true;
   }catch(e){
     const msg="Ошибка загрузки модели из GitHub: "+normalizedId;
@@ -2874,7 +2777,7 @@ initClockApp().catch(error=>{
   if(!el)return;
   var q=window.location.search || "без ?v";
   var t=new Date();
-  el.textContent="MENU FIRST INSTALL ONLY\n20260625-03\n"+q+"\n"+t.toLocaleTimeString();
+  el.textContent="PWA INSTALL HINTS\n20260623-02\n"+q+"\n"+t.toLocaleTimeString();
 })();
 </script>
 
