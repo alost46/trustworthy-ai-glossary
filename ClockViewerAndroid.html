@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Clock">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>Clock Viewer - SAFE-BASE-10C-VERSION-BUTTON-ANDROID</title>
+<title>Clock Viewer - SAFE-BASE-10D-PWA-NO-GOOGLE-EXIT</title>
 <style>
 :root{--bg:#0f172a;--text:#1f2937;--muted:#64748b}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -130,15 +130,15 @@ small{display:block;color:var(--muted);margin-top:4px;line-height:1.35}
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Clock Viewer">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<link rel="manifest" href="clock_manifest.json?v=SAFE-BASE-10C-VERSION-BUTTON-ANDROID">
-<link rel="apple-touch-icon" href="clock_icon_192.png?v=SAFE-BASE-10C-VERSION-BUTTON-ANDROID">
-<meta name="clock-engine-version" content="SAFE-BASE-10C-VERSION-BUTTON-ANDROID">
-<meta name="clock-cache-test-stamp" content="CACHE-FIX-SAFE-20260625-007C">
+<link rel="manifest" href="clock_manifest.json?v=SAFE-BASE-10D-PWA-NO-GOOGLE-EXIT">
+<link rel="apple-touch-icon" href="clock_icon_192.png?v=SAFE-BASE-10D-PWA-NO-GOOGLE-EXIT">
+<meta name="clock-engine-version" content="SAFE-BASE-10D-PWA-NO-GOOGLE-EXIT">
+<meta name="clock-cache-test-stamp" content="CACHE-FIX-SAFE-20260625-007D">
 </head>
 <body>
-<div id="clockBuildBadge" class="build-badge">BUILD SAFE-BASE-10C-VERSION-BUTTON-ANDROID</div>
-<div id="clockCacheTestBadge" class="cache-test-badge">VERSION BUTTON ANDROID
-20260625-06</div>
+<div id="clockBuildBadge" class="build-badge">BUILD SAFE-BASE-10D-PWA-NO-GOOGLE-EXIT</div>
+<div id="clockCacheTestBadge" class="cache-test-badge">PWA NO GOOGLE EXIT
+20260625-07</div>
 
 
 <div class="clock-screen">
@@ -375,7 +375,7 @@ small{display:block;color:var(--muted);margin-top:4px;line-height:1.35}
 </div>
 
 <script>
-const CLOCK_CACHE_BUST_VERSION="SAFE-BASE-10C-VERSION-BUTTON-ANDROID";
+const CLOCK_CACHE_BUST_VERSION="SAFE-BASE-10D-PWA-NO-GOOGLE-EXIT";
 
 
 function showClockEmergencyError(error){
@@ -395,7 +395,7 @@ window.addEventListener("unhandledrejection",function(event){
   showClockEmergencyError(event.reason || "Unhandled promise rejection");
 });
 
-// CLOCK_ENGINE_VERSION: SAFE-BASE-10C-VERSION-BUTTON-ANDROID
+// CLOCK_ENGINE_VERSION: SAFE-BASE-10D-PWA-NO-GOOGLE-EXIT
 
 const canvas=document.getElementById("clock");
 const ctx=canvas.getContext("2d");
@@ -449,9 +449,31 @@ function isTouchLikeDevice(){
   return ("ontouchstart" in window) || navigator.maxTouchPoints > 0;
 }
 
+function isClockViewerStandaloneMode(){
+  try{
+    return window.matchMedia("(display-mode: standalone)").matches ||
+      window.navigator.standalone === true ||
+      document.referrer.startsWith("android-app://");
+  }catch(e){
+    return false;
+  }
+}
+
+function leaveMainMenuSafely(){
+  if(isClockViewerStandaloneMode()){
+    try{
+      closeStartupOverlays();
+    }catch(e){}
+    showExitHint();
+    return;
+  }
+
+  leaveMainMenuSafely();
+}
+
 exitButton.onclick=()=>{
   if(modelPicker && modelPicker.classList.contains("active")){
-    window.location.href="https://www.google.com/";
+    leaveMainMenuSafely();
     return;
   }
 
@@ -1767,7 +1789,7 @@ if(modelPickerClose){
 
 if(modelPickerExit){
   modelPickerExit.onclick=()=>{
-    window.location.href="https://www.google.com/";
+    leaveMainMenuSafely();
   };
 }
 
