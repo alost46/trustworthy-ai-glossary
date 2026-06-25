@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Clock">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>Clock Viewer - SAFE-BASE-10B-OPEN-NOLOCAL-007</title>
+<title>Clock Viewer - SAFE-BASE-10C-VERSION-BUTTON-ANDROID</title>
 <style>
 :root{--bg:#0f172a;--text:#1f2937;--muted:#64748b}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -120,9 +120,9 @@ small{display:block;color:var(--muted);margin-top:4px;line-height:1.35}
   .svg-preview-grid{grid-template-columns:repeat(4,1fr)}
 }
 
-.build-badge{position:fixed;right:8px;bottom:8px;z-index:999998;background:rgba(255,255,255,.88);color:#0f172a;border:1px solid #cbd5e1;border-radius:8px;padding:4px 7px;font:11px/1.25 Arial,sans-serif;box-shadow:0 4px 14px rgba(0,0,0,.25);pointer-events:none}
+.build-badge{display:none!important;position:fixed;right:8px;bottom:8px;z-index:999998;background:rgba(255,255,255,.88);color:#0f172a;border:1px solid #cbd5e1;border-radius:8px;padding:4px 7px;font:11px/1.25 Arial,sans-serif;box-shadow:0 4px 14px rgba(0,0,0,.25);pointer-events:none}
 
-.cache-test-badge{position:fixed;left:8px;bottom:8px;z-index:999998;background:rgba(255,255,255,.92);color:#111827;border:1px solid #cbd5e1;border-radius:8px;padding:4px 7px;font:11px/1.25 Arial,sans-serif;box-shadow:0 4px 14px rgba(0,0,0,.25);pointer-events:none;white-space:pre-line}
+.cache-test-badge{display:none!important;position:fixed;left:8px;bottom:8px;z-index:999998;background:rgba(255,255,255,.92);color:#111827;border:1px solid #cbd5e1;border-radius:8px;padding:4px 7px;font:11px/1.25 Arial,sans-serif;box-shadow:0 4px 14px rgba(0,0,0,.25);pointer-events:none;white-space:pre-line}
 </style>
 
 <meta name="theme-color" content="#0f172a">
@@ -130,15 +130,15 @@ small{display:block;color:var(--muted);margin-top:4px;line-height:1.35}
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Clock Viewer">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<link rel="manifest" href="clock_manifest.json?v=SAFE-BASE-10B-OPEN-NOLOCAL-007">
-<link rel="apple-touch-icon" href="clock_icon_192.png?v=SAFE-BASE-10B-OPEN-NOLOCAL-007">
-<meta name="clock-engine-version" content="SAFE-BASE-10B-OPEN-NOLOCAL-007">
-<meta name="clock-cache-test-stamp" content="CACHE-FIX-SAFE-20260625-007B">
+<link rel="manifest" href="clock_manifest.json?v=SAFE-BASE-10C-VERSION-BUTTON-ANDROID">
+<link rel="apple-touch-icon" href="clock_icon_192.png?v=SAFE-BASE-10C-VERSION-BUTTON-ANDROID">
+<meta name="clock-engine-version" content="SAFE-BASE-10C-VERSION-BUTTON-ANDROID">
+<meta name="clock-cache-test-stamp" content="CACHE-FIX-SAFE-20260625-007C">
 </head>
 <body>
-<div id="clockBuildBadge" class="build-badge">BUILD SAFE-BASE-10B-OPEN-NOLOCAL-007</div>
-<div id="clockCacheTestBadge" class="cache-test-badge">OPEN NOLOCAL 007B
-20260625-05</div>
+<div id="clockBuildBadge" class="build-badge">BUILD SAFE-BASE-10C-VERSION-BUTTON-ANDROID</div>
+<div id="clockCacheTestBadge" class="cache-test-badge">VERSION BUTTON ANDROID
+20260625-06</div>
 
 
 <div class="clock-screen">
@@ -212,6 +212,7 @@ small{display:block;color:var(--muted);margin-top:4px;line-height:1.35}
           <button type="button" class="done-btn secondary-btn" id="exportHtml">Export ENGINE HTML</button>
           <button type="button" class="done-btn secondary-btn" id="exportLink" style="background:#059669;">Export LINK</button>
           <button type="button" class="done-btn secondary-btn" id="exportModelJson" style="background:#7c3aed;">Export MODEL JSON</button>
+          <button type="button" class="done-btn secondary-btn" id="showVersionInfo" style="background:#0f172a;">Версия</button>
         </div>
       </div>
 <div class="constructor-section">
@@ -374,7 +375,7 @@ small{display:block;color:var(--muted);margin-top:4px;line-height:1.35}
 </div>
 
 <script>
-const CLOCK_CACHE_BUST_VERSION="SAFE-BASE-10B-OPEN-NOLOCAL-007";
+const CLOCK_CACHE_BUST_VERSION="SAFE-BASE-10C-VERSION-BUTTON-ANDROID";
 
 
 function showClockEmergencyError(error){
@@ -394,7 +395,7 @@ window.addEventListener("unhandledrejection",function(event){
   showClockEmergencyError(event.reason || "Unhandled promise rejection");
 });
 
-// CLOCK_ENGINE_VERSION: SAFE-BASE-10B-OPEN-NOLOCAL-007
+// CLOCK_ENGINE_VERSION: SAFE-BASE-10C-VERSION-BUTTON-ANDROID
 
 const canvas=document.getElementById("clock");
 const ctx=canvas.getContext("2d");
@@ -732,6 +733,47 @@ const STORAGE_KEY="clock_constructor_models_v6";
 const AUTOSTART_LOCAL_MODEL_KEY="clock_autostart_local_model";
 const VIEWER_URL="https://alost46.github.io/trustworthy-ai-glossary/ClockViewerAndroid.html";
 let currentGitHubModelId="";
+
+function getClockViewerPlatformName(){
+  const ua=navigator.userAgent || "";
+  if(/iPad|iPhone|iPod/i.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1))return "iOS Safari / iPadOS Safari";
+  if(/Android/i.test(ua))return "Android Chrome / Android Browser";
+  if(/Windows/i.test(ua))return "Windows / PC";
+  if(/Mac/i.test(ua))return "macOS";
+  return "Unknown platform";
+}
+
+function getClockViewerVersionInfo(){
+  const build=(typeof CLOCK_CACHE_BUST_VERSION!=="undefined") ? CLOCK_CACHE_BUST_VERSION : "unknown";
+  const engineMeta=document.querySelector('meta[name="clock-engine-version"]');
+  const cacheMeta=document.querySelector('meta[name="clock-cache-test-stamp"]');
+  const autostart=(typeof getAutostartLocalModel==="function") ? (getAutostartLocalModel() || "не назначена") : "неизвестно";
+  const localCount=(()=>{try{return Object.keys(loadModels()).length;}catch(e){return "неизвестно";}})();
+
+  return [
+    "ClockViewer Android module",
+    "",
+    "BUILD: "+build,
+    "Engine meta: "+(engineMeta ? engineMeta.content : "нет"),
+    "Cache stamp: "+(cacheMeta ? cacheMeta.content : "нет"),
+    "Platform: "+getClockViewerPlatformName(),
+    "UserAgent: "+(navigator.userAgent || "нет"),
+    "",
+    "Стартовая локальная модель: "+autostart,
+    "Локальных моделей: "+localCount,
+    "GitHub model id: "+(currentGitHubModelId || "нет")
+  ].join("\n");
+}
+
+function showClockViewerVersionInfo(){
+  const info=getClockViewerVersionInfo();
+  try{
+    alert(info);
+  }catch(e){
+    console.log(info);
+  }
+}
+
 
 const colorMap={
   screenBgColor:{picker:"screenBgColorPicker",value:"screenBgColorValue"},
@@ -1654,6 +1696,12 @@ function importLocalModelObject(obj){
   modelStatus.textContent="Импортирована и сохранена локальная модель: "+name;
 }
 
+
+
+const showVersionInfoButton=document.getElementById("showVersionInfo");
+if(showVersionInfoButton){
+  showVersionInfoButton.onclick=showClockViewerVersionInfo;
+}
 
 document.getElementById("saveModel").onclick=()=>{
   saveLocalModelByName(modelNameInput.value,collectCurrentSettings());
